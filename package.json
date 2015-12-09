@@ -1,0 +1,40 @@
+{
+  "name": "fftt",
+  "version": "0.0.1",
+  "description": "Functional File Tree Transforms.",
+  "main": "index.js",
+  "scripts": {
+    "test": "gulp test"
+  },
+  "bin": {
+    "arts": ""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/massimiliano-mantione/fftt.git"
+  },
+  "author": "Massimiliano Mantione",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/massimiliano-mantione/fftt/issues"
+  },
+  "homepage": "https://github.com/massimiliano-mantione/fftt#readme",
+  "dependencies": {
+    "any-promise": "0.1.0",
+    "source-map-support": "0.3.2",
+    "stream-buffers": "2.2.0"
+  },
+  "devDependencies": {
+    "chai": "3.2.0",
+    "gulp": "3.9.0",
+    "gulp-mjs": "0.0.10",
+    "gulp-mjs-conventions": "0.0.6",
+    "meta-script": "0.0.47",
+    "mjs-check": "0.0.4",
+    "mkdirp": "0.5.1",
+    "mocha": "2.3.2",
+    "mock-fs": "3.2.0",
+    "rimraf": "2.4.3",
+    "string-streamer": "1.0.0"
+  }
+}
