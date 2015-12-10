@@ -11,12 +11,12 @@ In practice two (or even all the three of them) could be the same machine.
 That said, the different host roles are:
 
 * The *docker* host, which is the one where the build tasks are executed (as docker containers). It must be a docker host, capable of running docker containers, and it must have efficient read only access to the repository (exposing it as a read only volume inside each build task container).
-* The *build* host, which is the one that runs the FFTT build logic. It might or might not be the same as the *source* host and-or the *docker* host. If it is a docker container, it must be capable of running dockers on the
+* The *build* host, which is the one that runs the FFTT build logic. It might or might not be the same as the *source* host and-or the *docker* host.
   Its requirements are:
   - A nodejs installation that can run FFTT.
   - Having efficient read-write access to the repository (it has the responsibility of checking file trees into the repository).
   - Having reasonably efficient read only access to the source tree (it must read it to check input trees into the repository).
-  - The docker executable, and the ability to run dockers on the *docker* host (the *build* host could be a docker container, but it should be privileged and have access to a docker demon socket of the *docker* host).
+  - The docker executable, and the ability to run dockers on the *docker* host (the *build* host could be a docker container, but in this case it should be privileged and have access to the docker demon socket of the *docker* host).
 * The *source* host, which is the one where the source tree is stored.
   The requirement for the source host are:
   - The ability to invoke FFTT on the *build* host.
@@ -29,10 +29,10 @@ That said, the different host roles are:
 The build is described by a declarative yaml file that defines the graph (DAG) of build steps.
 A yaml file has been picked instead of a plain javascript file because it is less expressive (it is not "turing complete" like javascript), but we think that the full expressiveness of javascript is not needed and would make the file less amenable to analysis.
 
-Every build step is a "task", and must have a name unique in the whole build.
-Each task can (optionally) have other tasks as input.
-If it does not have any input it is considered an input (source) node in the graph.
-Input nodes can take as input a directory from the source host (specified as a path relative to the build file) and a glob set that specifies which files are relevant for the build. In any case the result of an input step is an immutable file tree checked into the artifact repository.
+Every build step is a "task", and must have a name (`id`) unique in the whole build graph.
+Each task can have other tasks as input.
+Nodes that do not have any input it are input (`source`) nodes in the graph.
+Input nodes can take as input a directory from the source host (specified as a path relative to the build file) and a glob set that specifies which files are relevant for the build. In any case the result of an input node is an immutable file tree checked into the artifact repository.
 
 The build file is an array of source and task nodes, where ordering is significant because a node can only have as input an already defined node. This is not a limiting constraint because the build graph must be acyclic anyway, and it makes the enforcement of this property simpler (and more explicit).
 
