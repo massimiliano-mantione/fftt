@@ -21,6 +21,7 @@
   "homepage": "https://github.com/massimiliano-mantione/fftt#readme",
   "dependencies": {
     "any-promise": "0.1.0",
+    "js-yaml": "^3.4.6",
     "source-map-support": "0.3.2",
     "stream-buffers": "2.2.0"
   },
