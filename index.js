@@ -1,2 +1,2 @@
-require('source-map-support').install();
-require('./lib/main');
+require('source-map-support').install()
+require('./lib/main')

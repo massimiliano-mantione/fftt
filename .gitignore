@@ -1,6 +1,5 @@
 node_modules/
-lib/*.js*
-test/*.js*
+lib/
 *.log
 TMP*.*
 LOG*.*
