@@ -4,8 +4,9 @@
   "description": "Functional File Tree Transforms.",
   "main": "index.js",
   "scripts": {
-    "build": "./node_modules/.bin/babel src --out-dir lib -s",
-    "test": "./node_modules/.bin/standard && ./node_modules/.bin/mocha --compilers js:babel-register"
+    "build": "./node_modules/.bin/babel src --out-dir . -s",
+    "coverage": "./node_modules/.bin/lab -S -c",
+    "test": "./node_modules/.bin/standard && ./node_modules/.bin/lab -S -T src/test/transform.js src/test -I __core-js_shared__"
   },
   "bin": {
     "arts": ""
@@ -29,11 +30,13 @@
   "devDependencies": {
     "babel": "6.3.13",
     "babel-cli": "6.3.17",
-    "babel-eslint": "4.1.6",
+    "babel-eslint": "^4.1.6",
     "babel-plugin-transform-flow-strip-types": "6.3.15",
     "babel-preset-es2015": "^6.3.13",
     "babel-register": "6.3.13",
     "chai": "3.2.0",
+    "code": "^2.0.1",
+    "lab": "8.0.1",
     "mkdirp": "0.5.1",
     "mocha": "2.3.2",
     "mock-fs": "3.5.0",
@@ -43,9 +46,16 @@
   },
   "standard": {
     "parser": "babel-eslint",
+    "ignore": [
+      "lib/**",
+      "test/**",
+      "types/**"
+    ],
     "globals": [
       "describe",
       "it",
+      "Util",
+      "TreeNode",
       "beforeEach",
       "module",
       "process"

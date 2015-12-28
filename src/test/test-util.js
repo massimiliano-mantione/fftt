@@ -1,13 +1,23 @@
 /* @flow */
 
-let expect = require('chai').expect
-let mock = require('mock-fs')
-let util = require('../src/util')
+import {expect} from 'code'
+
+import * as Lab from 'lab'
+const lab = exports.lab = Lab.script()
+const describe = lab.describe
+const beforeEach = lab.beforeEach
+const it = require('./promisify-it')(lab)
+
+import * as mock from 'mock-fs'
+import * as util from '../lib/util'
 
 let files = {
   '/root': {
     'foo.txt': 'foo',
-    'bar.txt': 'bar'
+    'bar.txt': 'bar',
+    'q': {
+      'a': '42'
+    }
   },
   '/home': {
     'baz.txt': mock.file({
@@ -19,17 +29,17 @@ let files = {
 }
 
 describe('Utils', () => {
-  let [fs, u] = [null, null]
+  let [fs, u] = [require('fs'), util]
 
-  beforeEach(() => {
+  beforeEach((done) => {
     fs = mock.fs(files)
     u = util.fromFs(fs)
+    done()
   })
 
   it('Can read files', () => {
     return u.readText('/root/foo.txt').then((text) => {
       expect(text).to.equal('foo')
-      return Promise.resolve()
     })
   })
 
@@ -38,7 +48,6 @@ describe('Utils', () => {
       return u.readText('/dest.txt')
     }).then((text) => {
       expect(text).to.equal('text')
-      return Promise.resolve()
     })
   })
 
@@ -47,7 +56,6 @@ describe('Utils', () => {
       return u.readText('/dest.txt')
     }).then((text) => {
       expect(text).to.equal('bar')
-      return Promise.resolve()
     })
   })
 
@@ -56,7 +64,12 @@ describe('Utils', () => {
       expect(stats.size).to.equal(3)
       expect(stats.ctime.getTime()).to.equal(1)
       expect(stats.mtime.getTime()).to.equal(2)
-      return Promise.resolve()
     })
+  })
+
+  it('Can stat dirs', () => {
+    // return u.statDir('/root').then((dirStats) => {
+    //   console.log('STATS', dirStats)
+    // })
   })
 })
