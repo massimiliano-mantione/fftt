@@ -31,7 +31,7 @@ A yaml file has been picked instead of a plain javascript file because it is les
 
 Every build step is a "task", and must have a name (`id`) unique in the whole build graph.
 Each task can have other tasks as input.
-Nodes that do not have any input it are input (`source`) nodes in the graph.
+Nodes that do not have any input are input (`source`) nodes in the graph.
 Input nodes can take as input a directory from the source host (specified as a path relative to the build file) and a glob set that specifies which files are relevant for the build. In any case the result of an input node is an immutable file tree checked into the artifact repository.
 
 The build file is an array of source and task nodes, where ordering is significant because a node can only have as input an already defined node. This is not a limiting constraint because the build graph must be acyclic anyway, and it makes the enforcement of this property simpler (and more explicit).
@@ -49,7 +49,7 @@ This command will implicitly receive arguments so that it will have the followin
 * `/build/out`: an empty directory, where the task output is supposed to be stored
 
 Optionally the system can be instructed to reproduce the contents of "in" inside the "out" directory, building a tree of directories (read write) which in turn contain symlinks to the files in the "in" tree.
-Moreover, the working directory by default would be `/build`, but it could be set to be either `/build/in` or `/build/out`.
+Moreover, the working directory (`cwd`) by default would be `/build`, but it could be set to be either `/build/in` or `/build/out`.
 This should help integrating build steps that are implemented as mutations of the source tree, and are hard to configure in a different way.
 
 Finally, every time a file tree is specified in the description of a task (either one of the inputs or the output), it is possible to declaratively specify a set of glob based "filter and move-rename" operations.
@@ -163,11 +163,12 @@ A `source` node looks like this:
 ```
 - source:
   id: "node-name"
-  path: "relative/path/to/directory"
+  path: "relative-or-absolute/path/to/directory"
   files: glob-set
 ```
 
-It imports the files specified by `files`, from the path `path` (relative to the build file), into the value identified by `id` in the build graph.
+It imports the files specified by `files`, from the path `path`, into the value identified by `id` in the build graph.
+`path` can be relative to the build file or absolute (if it starts with a `/`). The path of a source node is the only place where a path can be interpreted as absolute.
 `files` can be absent, in which case the '\*' glob will be assumed.
 If `path` is absent this source node is supposed to be used as subgraph argument (see `import` below).
 
@@ -226,13 +227,19 @@ However, in the input file, source nodes that are named as arguments in the `in`
 
 ## Glob operations
 
-A *glob-set* is described as a sequence of operations that specify files to copy from the source to the destination.
-Each operation can have the following form:
+A *glob-set* describes a set of files to copy from the a source to a destination directory.
+The set can be expresses in the following ways:
 
-* A single string, specifying a glob of files that must be included. In this case each file retains its relative path.
-* A dictionary of this shape: `{from: "from-path", files: "glob", to: "to-path"}`, which means that glob is evaluated at path `from-path` and the resulting files will be put at path `to-path` (retaining their paths relative to `from-path`). Both `from-path` and `to-path` are optional, and if absent are equivalent to the empty path, but at least one must be present (otherwise the form should have been expressed as a single glob, like in the first case). `from-path` cannot be a glob (but this restriction will likely be lifted in the future, to allow copying files from multiple paths into a single directory).
+* A single string, specifying a glob of files that must be copied, like `"my/src/path/*.js"`. In this case each file retains its relative path (from the source to the destination). These are the special characters of the glob syntax used to filter file and directory names:
+  - `/` is the directory separator
+  - `?` stands for *any character*
+  - `*` stands for *a sequence of zero or more characters*
+  - `**` stands for *any directory and its subdirectories* (and it *must* be followed by another filter that specifies what to include in those directories)
+* A dictionary of this shape: `{from: "from-path", files: "glob-set", to: "to-path"}`, which means that glob is evaluated at path `from-path` and the resulting files will be put at path `to-path` (retaining their paths relative to `from-path`). Both `from-path` and `to-path` are optional, and if absent are equivalent to the empty path, but at least one must be present (otherwise the form should have been expressed as a single glob, like in the first case). `from-path` cannot be a glob (but this restriction will likely be lifted in the future, to allow copying files from multiple paths into a single directory).
+* An array of glob sets, which is interpreted as the union of all the specified glob sets. In practice the sets are evaluated sequentially, in the order in which they are specified. If the same file is present multiple times, the operation should fail (FIXME: should we also have a "last copy wins" policy?).
+* As a special case of the *array of glob sets*, if the first glob is a string that ends with `/...` then the array is interpreted as a sequence of paths. As an example, `"path1/path2/path3"` is the same as `["path1/...", "path2", "path3"]`. This makes it possible to express sets like `["path/...", ["*.js", "*.jsx"]]`. This set would be equivalent to `["path/*.js", "path/*.jsx"]`, but it is more efficient because it is explicit that `"path"` can be evaluated only once (and `path` could itself be a set of directories).
 
-As a special case, the glob set `['*']` can be abbreviated as `'*'`.
+The simplest glob set is `'*'` (which means *everything as is*), and is the default value for a glob set.
 
 
 ## Build arguments
