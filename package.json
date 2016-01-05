@@ -6,6 +6,7 @@
   "scripts": {
     "build": "./node_modules/.bin/babel src --out-dir . -s",
     "coverage": "./node_modules/.bin/lab -S -c",
+    "lab": "./node_modules/.bin/lab -S -T src/test/transform.js src/test -I __core-js_shared__",
     "test": "./node_modules/.bin/standard && ./node_modules/.bin/lab -S -T src/test/transform.js src/test -I __core-js_shared__"
   },
   "bin": {
