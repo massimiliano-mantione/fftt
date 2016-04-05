@@ -1,12 +1,9 @@
 /* @flow */
 
 import {expect} from 'code'
-
 import * as Lab from 'lab'
 const lab = exports.lab = Lab.script()
-const describe = lab.describe
-// const beforeEach = lab.beforeEach
-const it = require('./promisify-it')(lab)
+const {it, describe} = require('./promisify-lab')(lab)
 
 import * as nameFilter from '../lib/nameFilter'
 
@@ -165,7 +162,7 @@ describe('nameFilter', () => {
         expect(glob('foo', true)).to.deep.equal({name: 'foo', next: glob})
         expect(glob('bar', false)).to.equal(null)
         expect(glob('bar', true)).to.deep.equal({name: 'bar', next: glob})
-      }, {only: true})
+      })
     })
   })
 })

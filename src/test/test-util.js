@@ -1,12 +1,9 @@
 /* @flow */
 
 import {expect} from 'code'
-
 import * as Lab from 'lab'
 const lab = exports.lab = Lab.script()
-const describe = lab.describe
-const beforeEach = lab.beforeEach
-const it = require('./promisify-it')(lab)
+const {it, describe, beforeEach} = require('./promisify-lab')(lab)
 
 import * as mock from 'mock-fs'
 import * as util from '../lib/util'
@@ -31,10 +28,9 @@ let files = {
 describe('Utils', () => {
   let [fs, u] = [require('fs'), util]
 
-  beforeEach((done) => {
+  beforeEach(() => {
     fs = mock.fs(files)
     u = util.fromFs(fs)
-    done()
   })
 
   it('Can read files', () => {
