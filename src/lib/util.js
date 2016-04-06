@@ -3,6 +3,25 @@
 let Promise = require('any-promise')
 import {join, basename} from 'path'
 
+export type TreeNode = {
+  name: string;
+  isDir: boolean;
+  isExe: boolean;
+  mtimeTicks: number;
+  hash: ?string;
+  children: ?Array<TreeNode>;
+}
+
+export type Util = {
+  copy: (source: string, target: string) => Promise<void>;
+  readText: (sourcePath: string) => Promise<string>;
+  writeText: (text: string, targetPath: string) => Promise<void>;
+  stat: () => Promise<any>;
+  makeTreeNode: (name: string, isDir: boolean, isExe: boolean, mtimeTicks: number, hash: string, children: Array<TreeNode>) => TreeNode;
+  cloneTreeNode: (node: TreeNode) => TreeNode;
+  fromFs: (fs: any) => Util;
+}
+
 function util (fs: any) : Util {
   if (!fs) {
     fs = require('fs')
