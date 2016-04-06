@@ -37,7 +37,7 @@ Input nodes can take as input a directory from the source host (specified as a p
 The build file is an array of source and task nodes, where ordering is significant because a node can only have as input an already defined node. This is not a limiting constraint because the build graph must be acyclic anyway, and it makes the enforcement of this property simpler (and more explicit).
 
 Another kind of graph node is the import of another build file, describing a build subgraph.
-In this case one or more tasks can be passed as named arguments (imputs) to this subgraph, and they will be the values of the correspondingly named inputs in the imported graph.
+In this case one or more tasks can be passed as named arguments (inputs) to this subgraph, and they will be the values of the correspondingly named inputs in the imported graph.
 The name of the "target" tasks of the subgraph must also be specified, and it defines what tasks the subgraph will compute.
 They will then be available as intermediate values inside the main (importer) build file.
 Of course file imports can be nested but they can not be recursive (FFTT will not check for this, and will likely crash in this case).
@@ -109,7 +109,7 @@ Given these principles, the actual implementation is the following set of direct
 
 ## Directory checkout format
 
-The `data` section of `dir` entries must be directly usable as a read-only version of the directory from a process that can access the repository in as a read-only file system.
+The `data` section of `dir` entries must be directly usable as a read-only version of the directory from a process that can access the repository as a read-only file system.
 
 It could be very tempting to implement every `data` directory as a directory containing links to the directory entries.
 Maybe hard links for the files, and in any case symlinks to other `data` directories for subdirectories.
@@ -227,7 +227,7 @@ However, in the input file, source nodes that are named as arguments in the `in`
 
 ## Glob operations
 
-A *glob-set* describes a set of files to copy from the a source to a destination directory.
+A *glob-set* describes a set of files to copy from a source to a destination directory.
 The set can be expresses in the following ways:
 
 * A single string, specifying a glob of files that must be copied, like `"my/src/path/*.js"`. In this case each file retains its relative path (from the source to the destination). These are the special characters of the glob syntax used to filter file and directory names:
