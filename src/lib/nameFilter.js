@@ -64,8 +64,10 @@ var anyFilter: NameFilter = (name: string) => {
   return {name, next: anyFilter}
 }
 
-function starFilter (next: ?NameFilter) : NameFilter {
-  if (next == null) {
+var nullFilter: NameFilter = () => { return null }
+
+function starFilter (next: NameFilter = nullFilter) : NameFilter {
+  if (next == nullFilter) {
     return anyFilter
   } else {
     return (name: string, isDir: boolean) => {
@@ -74,7 +76,7 @@ function starFilter (next: ?NameFilter) : NameFilter {
   }
 }
 
-function doubleStarFilter (next: ?NameFilter) : NameFilter {
+function doubleStarFilter (next: NameFilter = nullFilter) : NameFilter {
   function me (name: string, isDir: boolean) {
     if (isDir) {
       return {name, next: me}
@@ -89,7 +91,7 @@ function doubleStarFilter (next: ?NameFilter) : NameFilter {
   return me
 }
 
-function fromGlob (pattern: string, next: ?NameFilter) : NameFilter {
+function fromSingleGlobString (pattern: string, next: NameFilter = nullFilter) : NameFilter {
   if (pattern === '') {
     return starFilter(next)
   } else if (pattern === '*') {
@@ -117,6 +119,14 @@ function fromGlob (pattern: string, next: ?NameFilter) : NameFilter {
   }
 }
 
+function fromGlobString (pattern: string, next: NameFilter = nullFilter) : NameFilter {
+  let components = pattern.split('/')
+  while (components.length > 0) {
+    next = fromSingleGlobString(components.pop(), next)
+  }
+  return next
+}
+
 var nameFilter = {
   // Private functions exposed for testing
   _: {
@@ -126,10 +136,11 @@ var nameFilter = {
     stripFinalSeparator,
     stripInitialSeparator,
     stripContinueMarker,
-    splitPath
+    splitPath,
+    fromSingleGlobString
   },
   isAbsolute,
-  fromGlob
+  nullFilter
 }
 
 module.exports = nameFilter
