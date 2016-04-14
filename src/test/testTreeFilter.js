@@ -49,10 +49,40 @@ describe('treeFilter', () => {
     })
   })
 
-  it('scans trees', () => {
-    let glob = ff.nameFilter._.fromGlobString('**/*.txt')
-    return scanTree('/data', glob).then(filtered => {
-      return checkTreeForSuffix(filtered, '.txt', [ 'data', 'dir1', 'dir1txt', 'dir2', 'dir2txt' ])
+  describe('scanTree', () => {
+    it('finds txt files', () => {
+      let glob = ff.nameFilter._.fromGlobString('**/*.txt')
+      return scanTree('/data', glob).then(filtered => {
+        return checkTreeForSuffix(filtered, '.txt', [ 'data', 'dir1', 'dir1txt', 'dir2', 'dir2txt' ])
+      })
+    })
+
+    it('skips unknown files', () => {
+      let glob = ff.nameFilter._.fromGlobString('**/*.tvv')
+      return scanTree('/data', glob).then(filtered => {
+        expect(filtered).to.equal(null)
+      })
+    })
+
+    it('skips unknown dirs', () => {
+      let glob = ff.nameFilter._.fromGlobString('/woo')
+      return scanTree('/data', glob).then(filtered => {
+        expect(filtered).to.equal(null)
+      })
+    })
+
+    it('finds patterns', () => {
+      let glob = ff.nameFilter._.fromGlobString('**/*.js??')
+      return scanTree('/data', glob).then(filtered => {
+        return checkTreeForSuffix(filtered, '.json', [ 'data', 'dir1', 'dir1json', 'dir2', 'dir2json' ])
+      })
+    })
+
+    it('looks into dirs', () => {
+      let glob = ff.nameFilter._.fromGlobString('**/*.txt')
+      return scanTree('/data/dir1/dir1txt', glob).then(filtered => {
+        return checkTreeForSuffix(filtered, '.txt', [ 'dir1txt' ])
+      })
     })
   })
 })
