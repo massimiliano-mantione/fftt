@@ -1,14 +1,14 @@
 /* @flow */
 
-import type {TreeNode} from './util'
+import type {TreeNode} from './fileFilter'
 import type {NameFilter} from './nameFilter'
-import * as util from './util'
+import * as fileFilter from './fileFilter'
 import * as nameFilter from './nameFilter'
 
 function treeFilter (tree: TreeNode, filter: NameFilter) : ?TreeNode {
   let filterResult = filter(tree.name, tree.isDir)
   if (filterResult) {
-    let res = util.makeTreeNode(
+    let res = fileFilter.makeTreeNode(
         filterResult.name,
         tree.isDir,
         tree.isExe,

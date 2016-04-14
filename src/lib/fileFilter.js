@@ -95,7 +95,6 @@ function util (fs: any) : Util {
           reject(err)
         } else {
           Promise.all(files.map((fileName) => {
-            console.log('FILE', join(fullPath, fileName))
             return statNode(join(fullPath, fileName))
           })).then((nodes) => {
             return Promise.resolve(makeTreeNode(

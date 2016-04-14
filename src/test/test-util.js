@@ -6,7 +6,7 @@ const lab = exports.lab = Lab.script()
 const {it, describe, beforeEach} = require('./promisify-lab')(lab)
 
 import * as mock from 'mock-fs'
-import * as util from '../lib/util'
+import * as fileFilter from '../lib/fileFilter'
 
 let files = {
   '/root': {
@@ -25,38 +25,38 @@ let files = {
   }
 }
 
-describe('Utils', () => {
-  let [fs, u] = [require('fs'), util]
+describe('FileFilter', () => {
+  let [fs, ff] = [require('fs'), fileFilter]
 
   beforeEach(() => {
     fs = mock.fs(files)
-    u = util.fromFs(fs)
+    ff = fileFilter.fromFs(fs)
   })
 
   it('Can read files', () => {
-    return u.readText('/root/foo.txt').then((text) => {
+    return ff.readText('/root/foo.txt').then((text) => {
       expect(text).to.equal('foo')
     })
   })
 
   it('Can write files', () => {
-    return u.writeText('text', '/dest.txt').then(() => {
-      return u.readText('/dest.txt')
+    return ff.writeText('text', '/dest.txt').then(() => {
+      return ff.readText('/dest.txt')
     }).then((text) => {
       expect(text).to.equal('text')
     })
   })
 
   it('Can copy files', () => {
-    return u.copy('/root/bar.txt', '/dest.txt').then(() => {
-      return u.readText('/dest.txt')
+    return ff.copy('/root/bar.txt', '/dest.txt').then(() => {
+      return ff.readText('/dest.txt')
     }).then((text) => {
       expect(text).to.equal('bar')
     })
   })
 
   it('Can stat files', () => {
-    return u.stat('/home/baz.txt').then((stats) => {
+    return ff.stat('/home/baz.txt').then((stats) => {
       expect(stats.size).to.equal(3)
       expect(stats.ctime.getTime()).to.equal(1)
       expect(stats.mtime.getTime()).to.equal(2)
@@ -64,7 +64,7 @@ describe('Utils', () => {
   })
 
   it('Can stat dirs', () => {
-    // return u.statDir('/root').then((dirStats) => {
+    // return ff.statDir('/root').then((dirStats) => {
     //   console.log('STATS', dirStats)
     // })
   })
