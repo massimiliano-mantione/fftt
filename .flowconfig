@@ -3,6 +3,7 @@
 .*/node_modules/babel-.*/.*
 .*/node_modules/babylon/.*
 .*/node_modules/npm/.*
+.*/node_modules/config-chain/.*
 
 [include]
 src/lib

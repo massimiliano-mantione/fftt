@@ -3,7 +3,7 @@
 // This function is like a predicate on a file or directory name.
 // Given a name (and whether it is a directory), it returns null if it
 // does not match the filter, and a FilterResult if it matches.
-type NameFilter = (name: string, isDir: boolean) => ?FilterResult
+export type NameFilter = (name: string, isDir: boolean) => ?FilterResult
 
 // The value returned from a NameFilter in case of match.
 type FilterResult = {
@@ -11,7 +11,9 @@ type FilterResult = {
   // the "from-to" kind).
   name: string;
   // The filter to apply to the next section of the path, if any.
-  next: ?NameFilter;
+  next: NameFilter;
+  // True if the result is meaningful only if it has children (like '**')
+  volatile: bool;
 }
 
 const CONTINUE_MARKER = '/...'
@@ -61,25 +63,25 @@ function splitPath (path: string): string[] {
 }
 
 var anyFilter: NameFilter = (name: string) => {
-  return {name, next: anyFilter}
+  return {name, next: anyFilter, volatile: false}
 }
 
-var nullFilter: NameFilter = () => { return null }
+var NULL: NameFilter = () => { return null }
 
-function starFilter (next: NameFilter = nullFilter) : NameFilter {
-  if (next == nullFilter) {
+function starFilter (next: NameFilter = NULL) : NameFilter {
+  if (next === NULL) {
     return anyFilter
   } else {
     return (name: string, isDir: boolean) => {
-      return {name, next}
+      return {name, next, volatile: true}
     }
   }
 }
 
-function doubleStarFilter (next: NameFilter = nullFilter) : NameFilter {
+function doubleStarFilter (next: NameFilter = NULL) : NameFilter {
   function me (name: string, isDir: boolean) {
     if (isDir) {
-      return {name, next: me}
+      return {name, next: me, volatile: true}
     } else {
       if (next != null) {
         return next(name, false)
@@ -91,7 +93,7 @@ function doubleStarFilter (next: NameFilter = nullFilter) : NameFilter {
   return me
 }
 
-function fromSingleGlobString (pattern: string, next: NameFilter = nullFilter) : NameFilter {
+function fromSingleGlobString (pattern: string, next: NameFilter = NULL) : NameFilter {
   if (pattern === '') {
     return starFilter(next)
   } else if (pattern === '*') {
@@ -111,7 +113,7 @@ function fromSingleGlobString (pattern: string, next: NameFilter = nullFilter) :
     var regexp = new RegExp(pattern)
     return (name: string, isDir: boolean) => {
       if (regexp.test(name)) {
-        return {name, next}
+        return {name, next, volatile: false}
       } else {
         return null
       }
@@ -119,7 +121,7 @@ function fromSingleGlobString (pattern: string, next: NameFilter = nullFilter) :
   }
 }
 
-function fromGlobString (pattern: string, next: NameFilter = nullFilter) : NameFilter {
+function fromGlobString (pattern: string, next: NameFilter = NULL) : NameFilter {
   let components = pattern.split('/')
   while (components.length > 0) {
     next = fromSingleGlobString(components.pop(), next)
@@ -137,10 +139,11 @@ var nameFilter = {
     stripInitialSeparator,
     stripContinueMarker,
     splitPath,
-    fromSingleGlobString
+    fromSingleGlobString,
+    fromGlobString
   },
   isAbsolute,
-  nullFilter
+  NULL
 }
 
 module.exports = nameFilter

@@ -8,7 +8,7 @@ const {it, describe} = require('./promisify-lab')(lab)
 import * as nameFilter from '../lib/nameFilter'
 
 describe('nameFilter', () => {
-  let empty = nameFilter.nullFilter
+  let empty = nameFilter.NULL
 
   describe('endsWith', () => {
     it('works', () => {
@@ -69,14 +69,14 @@ describe('nameFilter', () => {
     })
   })
 
-  describe('fromGlob', () => {
+  describe('fromSingleGlobString', () => {
     var fg = nameFilter._.fromSingleGlobString
 
     describe('star last', () => {
       it('works', () => {
         var glob = fg('*')
         var foo = glob('foo', false)
-        expect(foo).to.deep.equal({name: 'foo', next: glob})
+        expect(foo).to.deep.equal({name: 'foo', next: glob, volatile: false})
         expect(glob('foo', true)).to.not.equal(null)
         expect(glob('', true)).to.not.equal(null)
       })
@@ -86,8 +86,8 @@ describe('nameFilter', () => {
       it('works', () => {
         var next = fg('foo')
         var glob = fg('*', next)
-        expect(glob('foo', false)).to.deep.equal({name: 'foo', next})
-        expect(glob('foo', true)).to.deep.equal({name: 'foo', next})
+        expect(glob('foo', false)).to.deep.equal({name: 'foo', next, volatile: true})
+        expect(glob('foo', true)).to.deep.equal({name: 'foo', next, volatile: true})
       })
     })
 
@@ -104,7 +104,7 @@ describe('nameFilter', () => {
       it('works', () => {
         var f = 'foobar'
         var glob = fg(f)
-        expect(glob(f, false)).to.deep.equal({name: f, next: empty})
+        expect(glob(f, false)).to.deep.equal({name: f, next: empty, volatile: false})
         expect(glob('foo', true)).to.equal(null)
         expect(glob('ob', false)).to.equal(null)
         expect(glob('', false)).to.equal(null)
@@ -117,7 +117,7 @@ describe('nameFilter', () => {
       it('works', () => {
         var f = 'f$oo.b^ar'
         var glob = fg(f)
-        expect(glob(f, false)).to.deep.equal({name: f, next: empty})
+        expect(glob(f, false)).to.deep.equal({name: f, next: empty, volatile: false})
         expect(glob('foo', true)).to.equal(null)
         expect(glob('ob', false)).to.equal(null)
         expect(glob('', false)).to.equal(null)
@@ -129,9 +129,9 @@ describe('nameFilter', () => {
     describe('jolly char', () => {
       it('works', () => {
         var glob = fg('foo?ar')
-        expect(glob('foobar', false)).to.deep.equal({name: 'foobar', next: empty})
-        expect(glob('foocar', false)).to.deep.equal({name: 'foocar', next: empty})
-        expect(glob('foo.ar', false)).to.deep.equal({name: 'foo.ar', next: empty})
+        expect(glob('foobar', false)).to.deep.equal({name: 'foobar', next: empty, volatile: false})
+        expect(glob('foocar', false)).to.deep.equal({name: 'foocar', next: empty, volatile: false})
+        expect(glob('foo.ar', false)).to.deep.equal({name: 'foo.ar', next: empty, volatile: false})
         expect(glob('foo', true)).to.equal(null)
         expect(glob('ob', false)).to.equal(null)
       })
@@ -140,8 +140,8 @@ describe('nameFilter', () => {
     describe('jolly chars', () => {
       it('works', () => {
         var glob = fg('n?sc?r')
-        expect(glob('nascar', false)).to.deep.equal({name: 'nascar', next: empty})
-        expect(glob('nosc.r', false)).to.deep.equal({name: 'nosc.r', next: empty})
+        expect(glob('nascar', false)).to.deep.equal({name: 'nascar', next: empty, volatile: false})
+        expect(glob('nosc.r', false)).to.deep.equal({name: 'nosc.r', next: empty, volatile: false})
         expect(glob('nasca', false)).to.equal(null)
       })
     })
@@ -149,9 +149,9 @@ describe('nameFilter', () => {
     describe('star char', () => {
       it('works', () => {
         var glob = fg('*.js')
-        expect(glob('foo.js', false)).to.deep.equal({name: 'foo.js', next: empty})
-        expect(glob('bar.js', false)).to.deep.equal({name: 'bar.js', next: empty})
-        expect(glob('$.js', false)).to.deep.equal({name: '$.js', next: empty})
+        expect(glob('foo.js', false)).to.deep.equal({name: 'foo.js', next: empty, volatile: false})
+        expect(glob('bar.js', false)).to.deep.equal({name: 'bar.js', next: empty, volatile: false})
+        expect(glob('$.js', false)).to.deep.equal({name: '$.js', next: empty, volatile: false})
         expect(glob('foo.cs', false)).to.equal(null)
       })
     })
@@ -160,11 +160,36 @@ describe('nameFilter', () => {
       it('works', () => {
         var next = fg('foo')
         var glob = fg('**', next)
-        expect(glob('foo', false)).to.deep.equal({name: 'foo', next: empty})
-        expect(glob('foo', true)).to.deep.equal({name: 'foo', next: glob})
+        expect(glob('foo', false)).to.deep.equal({name: 'foo', next: empty, volatile: false})
+        expect(glob('foo', true)).to.deep.equal({name: 'foo', next: glob, volatile: true})
         expect(glob('bar', false)).to.equal(null)
-        expect(glob('bar', true)).to.deep.equal({name: 'bar', next: glob})
+        expect(glob('bar', true)).to.deep.equal({name: 'bar', next: glob, volatile: true})
       })
+    })
+  })
+
+  describe('fromGlobString', () => {
+    var fg = nameFilter._.fromGlobString
+
+    it('handles a simple pattern', () => {
+      var f = 'foobar'
+      var glob = fg(f)
+      expect(glob(f, false)).to.deep.equal({name: f, next: empty, volatile: false})
+    })
+
+    it('handles a double pattern', () => {
+      var glob = fg('foo/bar')
+      let foo = glob('foo', false)
+      if (foo) {
+        expect(foo.name).to.equal('foo')
+        if (foo.next) {
+          expect(foo.next('bar', false)).to.deep.equal({name: 'bar', next: empty, volatile: false})
+        } else {
+          throw new Error('foo.next is null')
+        }
+      } else {
+        throw new Error('foo is null')
+      }
     })
   })
 })

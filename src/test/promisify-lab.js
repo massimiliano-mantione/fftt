@@ -26,7 +26,7 @@ export type Lab = {
 }
 declare module 'lab' { declare var exports : Lab }
 
-type LabFunctionPromise = () => ?Promise
+type LabFunctionPromise = (() => ?Promise<any>)
 type LabScriptPromise = {
   describe: (msg: string, options: (() => void) | Object, code: ?(() => void)) => void;
   it: (msg: string, options: LabFunctionPromise | Object, code: ?LabFunctionPromise) => void;
@@ -53,12 +53,14 @@ function wrapCode (test: LabFunctionPromise): LabFunctionDone {
 module.exports = function (lab: LabScript) : LabScriptPromise {
   return {
     describe: lab.describe,
-    it: function (msg: string, options: LabFunctionPromise | Object, code: ?LabFunctionPromise) : void {
-      if (!code) {
-        code = options
-        options = {}
+    it: function (msg: string, options: LabFunctionPromise | LabItOptions, code: ?LabFunctionPromise) : void {
+      if (!code && typeof options === 'function') {
+        lab.it(msg, wrapCode(options))
+      } else if (typeof options === 'object' && typeof code === 'function') {
+        lab.it(msg, options, wrapCode(code))
+      } else {
+        throw new Error('Wrong arg types: options ' + (typeof options) + ', code ' + (typeof code))
       }
-      lab.it(msg, options, wrapCode(code))
     },
     before: function (code: LabFunctionPromise) : void {
       lab.before(wrapCode(code))

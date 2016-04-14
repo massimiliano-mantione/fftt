@@ -1,23 +1,23 @@
 /* @flow */
 
-let Promise = require('any-promise')
 import {join, basename} from 'path'
 
 export type TreeNode = {
   name: string;
   isDir: boolean;
   isExe: boolean;
+  children: Array<TreeNode>;
   mtimeTicks: number;
   hash: ?string;
-  children: ?Array<TreeNode>;
 }
 
 export type Util = {
   copy: (source: string, target: string) => Promise<void>;
   readText: (sourcePath: string) => Promise<string>;
   writeText: (text: string, targetPath: string) => Promise<void>;
-  stat: () => Promise<any>;
-  makeTreeNode: (name: string, isDir: boolean, isExe: boolean, mtimeTicks: number, hash: string, children: Array<TreeNode>) => TreeNode;
+  stat: (path: string) => Promise<any>;
+  statNode: (fullPath: string) => Promise<TreeNode>;
+  makeTreeNode: (name: string, isDir: boolean, isExe: boolean, children: Array<TreeNode>, mtimeTicks: number, hash: ?string) => TreeNode;
   cloneTreeNode: (node: TreeNode) => TreeNode;
   fromFs: (fs: any) => Util;
 }
@@ -57,7 +57,7 @@ function util (fs: any) : Util {
     })
   }
 
-  function stat (path) {
+  function stat (path: string): Promise<any> {
     return new Promise((resolve, reject) => {
       fs.stat(path, (err, stats) => {
         if (err) reject(err)
@@ -66,7 +66,7 @@ function util (fs: any) : Util {
     })
   }
 
-  function makeTreeNode (name: string, isDir: boolean, isExe: boolean, mtimeTicks: number = 0, hash: ?string = null, children: ?Array<TreeNode> = null): TreeNode {
+  function makeTreeNode (name: string, isDir: boolean, isExe: boolean, children: Array<TreeNode> = [], mtimeTicks: number = 0, hash: ?string = null): TreeNode {
     return {
       name: name,
       isDir: isDir,
@@ -82,24 +82,28 @@ function util (fs: any) : Util {
       name: node.name,
       isDir: node.isDir,
       isExe: node.isExe,
+      children: node.children.map(cloneTreeNode),
       mtimeTicks: node.mtimeTicks,
-      hash: node.hash,
-      children: (node.children) ? node.children.map(cloneTreeNode) : null
+      hash: node.hash
     }
   }
 
-  function statDir (path) {
+  function statDir (fullPath: string): Promise<TreeNode> {
     return new Promise((resolve, reject) => {
-      fs.readdir(path, (err, files) => {
+      fs.readdir(fullPath, (err, files) => {
         if (err) {
           reject(err)
         } else {
           Promise.all(files.map((fileName) => {
-            console.log('FILE', join(path, fileName))
-            return statNode(join(path, fileName))
+            console.log('FILE', join(fullPath, fileName))
+            return statNode(join(fullPath, fileName))
           })).then((nodes) => {
-            // let actualNodes = nodes.reduce()
-            return Promise.resolve()
+            return Promise.resolve(makeTreeNode(
+              basename(fullPath),
+              true,
+              false,
+              nodes
+            ))
           })
           .then((stats) => resolve(stats))
           .catch((err) => { reject(err) })
@@ -112,16 +116,16 @@ function util (fs: any) : Util {
     return !!(1 & parseInt((stats.mode & parseInt('777', 8)).toString(8)[0], 10))
   }
 
-  function statNode (fullPath) {
-    stat(fullPath)
+  function statNode (fullPath: string): Promise<TreeNode> {
+    return stat(fullPath)
     .then((stats) => {
       if (stats.isFile()) {
         let fileName = basename(fullPath)
-        return Promise.resolve(makeTreeNode(fileName, false, isExecutable(stats), stats.mtime.getTime()))
+        return Promise.resolve(makeTreeNode(fileName, false, isExecutable(stats), [], stats.mtime.getTime()))
       } else if (stats.isDirectory()) {
         return statDir(fullPath)
       } else {
-        return Promise.resolve(null)
+        throw new Error('')
       }
     })
   }
@@ -130,6 +134,7 @@ function util (fs: any) : Util {
   u.readText = readText
   u.writeText = writeText
   u.stat = stat
+  u.statNode = statNode
   u.makeTreeNode = makeTreeNode
   u.cloneTreeNode = cloneTreeNode
   u.fromFs = util
