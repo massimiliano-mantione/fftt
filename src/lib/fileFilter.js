@@ -16,6 +16,7 @@ export type TreeNode = {
 export type FileFilter = {
   nameFilter: typeof nameFilter;
   treeFilter: (tree: TreeNode, filter: NameFilter) => ?TreeNode;
+  scanTree: (fullPath: string, filter: NameFilter) => Promise<?TreeNode>;
   copy: (source: string, target: string) => Promise<void>;
   readText: (sourcePath: string) => Promise<string>;
   writeText: (text: string, targetPath: string) => Promise<void>;
@@ -98,7 +99,7 @@ function ff (fs: any) : FileFilter {
         if (err) {
           reject(err)
         } else {
-          Promise.all(files.map((fileName) => {
+          Promise.all(files.sort().map((fileName) => {
             return statNode(join(fullPath, fileName))
           })).then((nodes) => {
             return Promise.resolve(makeTreeNode(
@@ -128,7 +129,7 @@ function ff (fs: any) : FileFilter {
       } else if (stats.isDirectory()) {
         return statDir(fullPath)
       } else {
-        throw new Error('')
+        throw new Error('File is neither a file nor a directory: ' + basename(fullPath))
       }
     })
   }
@@ -163,8 +164,55 @@ function ff (fs: any) : FileFilter {
     }
   }
 
+  function scanTree (fullPath: string, filter: NameFilter) : Promise<?TreeNode> {
+    return stat(fullPath)
+    .then((stats) => {
+      let nodeName = basename(fullPath)
+      let filterResult = filter(nodeName, stats.isDirectory())
+
+      if (filterResult) {
+        let fr = filterResult
+        if (stats.isFile()) {
+          return Promise.resolve(makeTreeNode(nodeName, false, isExecutable(stats), [], stats.mtime.getTime()))
+        } else if (stats.isDirectory()) {
+          return new Promise((resolve, reject) => {
+            fs.readdir(fullPath, (err, files) => {
+              if (err) {
+                reject(err)
+              } else {
+                Promise.all(files.sort().map((fileName) => {
+                  return scanTree(join(fullPath, fileName), fr.next)
+                })).then((nodes) => {
+                  nodes = nodes.filter(node => node != null)
+                  if (fr.volatile && nodes.length === 0) {
+                    return Promise.resolve(null)
+                  } else {
+                    return Promise.resolve(makeTreeNode(
+                      basename(fullPath),
+                      true,
+                      false,
+                      nodes,
+                      stats.mtime.getTime()
+                    ))
+                  }
+                })
+                .then((stats) => resolve(stats))
+                .catch((err) => { reject(err) })
+              }
+            })
+          })
+        } else {
+          throw new Error('Path is neither a file nor a directory: ' + fullPath)
+        }
+      } else {
+        return Promise.resolve(null)
+      }
+    })
+  }
+
   result.nameFilter = nameFilter
   result.treeFilter = treeFilter
+  result.scanTree = scanTree
   result.copy = copy
   result.readText = readText
   result.writeText = writeText
