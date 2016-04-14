@@ -1,6 +1,8 @@
 /* @flow */
 
 import {join, basename} from 'path'
+import * as nameFilter from './nameFilter'
+import type {NameFilter} from './nameFilter'
 
 export type TreeNode = {
   name: string;
@@ -11,7 +13,9 @@ export type TreeNode = {
   hash: ?string;
 }
 
-export type Util = {
+export type FileFilter = {
+  nameFilter: typeof nameFilter;
+  treeFilter: (tree: TreeNode, filter: NameFilter) => ?TreeNode;
   copy: (source: string, target: string) => Promise<void>;
   readText: (sourcePath: string) => Promise<string>;
   writeText: (text: string, targetPath: string) => Promise<void>;
@@ -19,14 +23,14 @@ export type Util = {
   statNode: (fullPath: string) => Promise<TreeNode>;
   makeTreeNode: (name: string, isDir: boolean, isExe: boolean, children: Array<TreeNode>, mtimeTicks: number, hash: ?string) => TreeNode;
   cloneTreeNode: (node: TreeNode) => TreeNode;
-  fromFs: (fs: any) => Util;
+  fromFs: (fs: any) => FileFilter;
 }
 
-function util (fs: any) : Util {
+function ff (fs: any) : FileFilter {
   if (!fs) {
     fs = require('fs')
   }
-  let u = {}
+  let result = {}
 
   function copy (source: string, target: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -129,16 +133,48 @@ function util (fs: any) : Util {
     })
   }
 
-  u.copy = copy
-  u.readText = readText
-  u.writeText = writeText
-  u.stat = stat
-  u.statNode = statNode
-  u.makeTreeNode = makeTreeNode
-  u.cloneTreeNode = cloneTreeNode
-  u.fromFs = util
+  function treeFilter (tree: TreeNode, filter: NameFilter) : ?TreeNode {
+    let filterResult = filter(tree.name, tree.isDir)
+    if (filterResult) {
+      let res = makeTreeNode(
+          filterResult.name,
+          tree.isDir,
+          tree.isExe,
+          [],
+          tree.mtimeTicks,
+          tree.hash)
+      let nextFilter = filterResult.next
+      if (tree.isDir) {
+        tree.children.forEach((child) => {
+          let filteredChild = treeFilter(child, nextFilter)
+          if (filteredChild) {
+            res.children.push(filteredChild)
+          }
+        })
+      }
 
-  return u
+      if (filterResult.volatile && res.children.length === 0) {
+        return null
+      } else {
+        return res
+      }
+    } else {
+      return null
+    }
+  }
+
+  result.nameFilter = nameFilter
+  result.treeFilter = treeFilter
+  result.copy = copy
+  result.readText = readText
+  result.writeText = writeText
+  result.stat = stat
+  result.statNode = statNode
+  result.makeTreeNode = makeTreeNode
+  result.cloneTreeNode = cloneTreeNode
+  result.fromFs = ff
+
+  return result
 }
 
-module.exports = util()
+module.exports = ff()

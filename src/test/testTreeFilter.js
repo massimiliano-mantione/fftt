@@ -7,7 +7,6 @@ const {it, describe} = require('./promisify-lab')(lab)
 
 import * as fsData from './fs-data'
 import * as fileFilter from '../lib/fileFilter'
-import * as treeFilter from '../lib/treeFilter'
 
 function checkTree (node, check) {
   check(node)
@@ -21,10 +20,11 @@ function checkTree (node, check) {
 describe('treeFilter', () => {
   let fs = fsData.fs()
   let ff = fileFilter.fromFs(fs)
+  let treeFilter = ff.treeFilter
 
   it('filters trees', () => {
     let tree = ff.statNode('/data')
-    let glob = treeFilter.nameFilter._.fromGlobString('**/*.txt')
+    let glob = ff.nameFilter._.fromGlobString('**/*.txt')
     tree.then(t => {
       let filtered = treeFilter.filter(t, glob)
       let dirs = []
