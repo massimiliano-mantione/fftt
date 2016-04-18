@@ -4,11 +4,11 @@ import {join, basename} from 'path'
 import * as nameFilter from './nameFilter'
 import type {NameFilter} from './nameFilter'
 
+export type TreeNodeMap = {[key: string]: TreeNode}
 export type TreeNode = {
-  name: string;
   isDir: boolean;
   isExe: boolean;
-  children: Array<TreeNode>;
+  children: TreeNodeMap;
   mtimeTicks: number;
   hash: ?string;
 }
@@ -16,15 +16,19 @@ export type TreeNode = {
 export type FileFilter = {
   nameFilter: typeof nameFilter;
   treeFilter: (tree: TreeNode, filter: NameFilter) => ?TreeNode;
-  scanTree: (fullPath: string, filter: NameFilter) => Promise<?TreeNode>;
+  scanDir: (fullPath: string, filter: NameFilter) => Promise<TreeNodeMap>;
   copy: (source: string, target: string) => Promise<void>;
   readText: (sourcePath: string) => Promise<string>;
   writeText: (text: string, targetPath: string) => Promise<void>;
   stat: (path: string) => Promise<any>;
   statNode: (fullPath: string) => Promise<TreeNode>;
-  makeTreeNode: (name: string, isDir: boolean, isExe: boolean, children: Array<TreeNode>, mtimeTicks: number, hash: ?string) => TreeNode;
+  makeTreeNode: (isDir: boolean, isExe: boolean, children: TreeNodeMap, mtimeTicks: number, hash: ?string) => TreeNode;
   cloneTreeNode: (node: TreeNode) => TreeNode;
   fromFs: (fs: any) => FileFilter;
+}
+
+function childNames (node: TreeNode): Array<string> {
+  return Object.keys(node.children)
 }
 
 function ff (fs: any) : FileFilter {
@@ -71,9 +75,8 @@ function ff (fs: any) : FileFilter {
     })
   }
 
-  function makeTreeNode (name: string, isDir: boolean, isExe: boolean, children: Array<TreeNode> = [], mtimeTicks: number = 0, hash: ?string = null): TreeNode {
+  function makeTreeNode (isDir: boolean, isExe: boolean, children: TreeNodeMap = {}, mtimeTicks: number = 0, hash: ?string = null): TreeNode {
     return {
-      name: name,
       isDir: isDir,
       isExe: isExe,
       mtimeTicks: mtimeTicks,
@@ -83,11 +86,14 @@ function ff (fs: any) : FileFilter {
   }
 
   function cloneTreeNode (node: TreeNode): TreeNode {
+    let children = {}
+    childNames(node).forEach(k => {
+      children[k] = cloneTreeNode(node.children[k])
+    })
     return {
-      name: node.name,
       isDir: node.isDir,
       isExe: node.isExe,
-      children: node.children.map(cloneTreeNode),
+      children: children,
       mtimeTicks: node.mtimeTicks,
       hash: node.hash
     }
@@ -99,15 +105,13 @@ function ff (fs: any) : FileFilter {
         if (err) {
           reject(err)
         } else {
+          let children = {}
           Promise.all(files.sort().map((fileName) => {
-            return statNode(join(fullPath, fileName))
-          })).then((nodes) => {
-            return Promise.resolve(makeTreeNode(
-              basename(fullPath),
-              true,
-              false,
-              nodes
-            ))
+            return statNode(join(fullPath, fileName)).then(child => {
+              children[fileName] = child
+            })
+          })).then(() => {
+            return Promise.resolve(makeTreeNode(true, false, children))
           })
           .then((stats) => resolve(stats))
           .catch((err) => { reject(err) })
@@ -124,8 +128,7 @@ function ff (fs: any) : FileFilter {
     return stat(fullPath)
     .then((stats) => {
       if (stats.isFile()) {
-        let fileName = basename(fullPath)
-        return Promise.resolve(makeTreeNode(fileName, false, isExecutable(stats), [], stats.mtime.getTime()))
+        return Promise.resolve(makeTreeNode(false, isExecutable(stats), {}, stats.mtime.getTime()))
       } else if (stats.isDirectory()) {
         return statDir(fullPath)
       } else {
@@ -134,85 +137,66 @@ function ff (fs: any) : FileFilter {
     })
   }
 
-  function treeFilter (tree: TreeNode, filter: NameFilter) : ?TreeNode {
-    let filterResult = filter(tree.name, tree.isDir)
-    if (filterResult) {
-      let res = makeTreeNode(
-          filterResult.name,
-          tree.isDir,
-          tree.isExe,
-          [],
-          tree.mtimeTicks,
-          tree.hash)
-      let nextFilter = filterResult.next
-      if (tree.isDir) {
-        tree.children.forEach((child) => {
-          let filteredChild = treeFilter(child, nextFilter)
-          if (filteredChild) {
-            res.children.push(filteredChild)
-          }
-        })
-      }
-
-      if (filterResult.volatile && res.children.length === 0) {
-        return null
-      } else {
-        return res
-      }
-    } else {
-      return null
-    }
-  }
-
-  function scanTree (fullPath: string, filter: NameFilter) : Promise<?TreeNode> {
-    return stat(fullPath)
-    .then((stats) => {
-      let nodeName = basename(fullPath)
-      let filterResult = filter(nodeName, stats.isDirectory())
+  function treeFilter (tree: TreeNode, filter: NameFilter) : TreeNode {
+    let children = {}
+    let result = makeTreeNode(tree.isDir, tree.isExe, children, tree.mtimeTicks, tree.hash)
+    childNames(tree).forEach((name) => {
+      let treeChild = tree.children[name]
+      let filterResult = filter(name, treeChild.isDir)
 
       if (filterResult) {
-        let fr = filterResult
-        if (stats.isFile()) {
-          return Promise.resolve(makeTreeNode(nodeName, false, isExecutable(stats), [], stats.mtime.getTime()))
-        } else if (stats.isDirectory()) {
-          return new Promise((resolve, reject) => {
-            fs.readdir(fullPath, (err, files) => {
-              if (err) {
-                reject(err)
+        let resultChild = treeFilter(treeChild, filterResult.next)
+
+        if (childNames(resultChild).length > 0 || !filterResult.volatile) {
+          children[name] = resultChild
+        }
+      }
+    })
+    return result
+  }
+
+  function scanDir (path: string, filter: NameFilter): Promise<TreeNodeMap> {
+    return new Promise((resolve, reject) => {
+      fs.readdir(path, (err, files) => {
+        if (err) {
+          reject(err)
+        } else {
+          let children = {}
+          Promise.all(files.sort().map((nodeName) => {
+            let nodePath = join(path, nodeName)
+            return stat(nodePath).then(stats => {
+              let filterResult = filter(nodeName, stats.isDirectory())
+              if (filterResult) {
+                let fr = filterResult
+                if (stats.isDirectory()) {
+                  return scanDir(nodePath, filterResult.next).then(dirChildren => {
+                    if ((!fr.volatile) || Object.keys(dirChildren).length > 0) {
+                      children[nodeName] = makeTreeNode(true, false, dirChildren, stats.mtime.getTime())
+                    }
+                  })
+                } else if (stats.isFile()) {
+                  children[nodeName] = makeTreeNode(false, isExecutable(stats), {}, stats.mtime.getTime())
+                  return Promise.resolve()
+                } else {
+                  throw new Error('Path is neither a file nor a directory: ' + nodePath)
+                }
               } else {
-                Promise.all(files.sort().map((fileName) => {
-                  return scanTree(join(fullPath, fileName), fr.next)
-                })).then((nodes) => {
-                  nodes = nodes.filter(node => node != null)
-                  if (fr.volatile && nodes.length === 0) {
-                    return Promise.resolve(null)
-                  } else {
-                    return Promise.resolve(makeTreeNode(
-                      basename(fullPath),
-                      true,
-                      false,
-                      nodes,
-                      stats.mtime.getTime()
-                    ))
-                  }
-                })
-                .then((stats) => resolve(stats))
-                .catch((err) => { reject(err) })
+                return Promise.resolve()
               }
             })
+          })).then(() => {
+            resolve(children)
+          }).catch(err => {
+            reject(err)
           })
-        } else {
-          throw new Error('Path is neither a file nor a directory: ' + fullPath)
         }
-      } else {
-        return Promise.resolve(null)
-      }
+      })
     })
   }
 
   result.nameFilter = nameFilter
   result.treeFilter = treeFilter
-  result.scanTree = scanTree
+  result.scanDir = scanDir
   result.copy = copy
   result.readText = readText
   result.writeText = writeText
