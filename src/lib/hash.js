@@ -56,10 +56,94 @@ function hashString (data: string, kindVal: string): string {
   return applyKind(toKind(kindVal), shasum.digest(DIGEST_FORMAT))
 }
 
+const OPEN = '{'
+const CLOSE = '}'
+const SEPARATOR = '/'
+
+function hashPrimitivePartial (parts: Array<string>, data: any): void {
+  if (typeof data === 'string') {
+    parts.push(data)
+  } else if (typeof data === 'number') {
+    parts.push('' + data)
+  } else if (typeof data === 'boolean') {
+    parts.push(data ? 'T' : 'F')
+  } else if (data === null) {
+    parts.push('NULL')
+  } else if (data === undefined) {
+    parts.push('NONE')
+  } else {
+    throw new Error('Data is not primitive: ' + data)
+  }
+}
+
+function hashObjectPartial (parts: Array<string>, steps: any, data: any): void {
+  parts.push(OPEN)
+  if (typeof steps === 'string') {
+    steps = [steps]
+  } else if (steps.length === 0) {
+    steps = ['[]']
+  }
+  for (let step of steps) {
+    if (typeof step === 'string') {
+      step = [step]
+    } else if (step.length === 0) {
+      step = ['[]']
+    }
+    let stepCode = step[0]
+    let subStep = step[1]
+    if (stepCode === '[]') {
+      if (subStep) {
+        data.forEach(element => {
+          hashObjectPartial(parts, subStep, element)
+        })
+      } else {
+        data.forEach(element => {
+          hashPrimitivePartial(parts, element)
+        })
+      }
+    } else if (stepCode === '{}') {
+      let keys = Object.keys(data)
+      keys.sort()
+      if (subStep) {
+        keys.forEach(key => {
+          parts.push(key)
+          hashObjectPartial(parts, subStep, data[key])
+        })
+      } else {
+        keys.forEach(key => {
+          parts.push(key)
+          hashPrimitivePartial(parts, data[key])
+        })
+      }
+    } else if (typeof stepCode === 'string') {
+      parts.push(stepCode)
+      if (subStep) {
+        hashObjectPartial(parts, subStep, data[stepCode])
+      } else {
+        hashPrimitivePartial(parts, data[stepCode])
+      }
+    } else {
+      throw new Error('Invalid stepcode: ' + stepCode)
+    }
+  }
+  parts.push(CLOSE)
+}
+
+function hashObject (steps: any, data: any, kindVal: string): string {
+  let parts = []
+  hashObjectPartial(parts, steps, data)
+  let stringData = parts.join(SEPARATOR)
+  return hashString(stringData, kindVal)
+}
+
 module.exports = {
+  _: {
+    hashObjectPartial
+  },
   checkKind,
   applyKind,
   getKind,
   hashStream,
-  hashString
+  hashString,
+  hashObject
 }
