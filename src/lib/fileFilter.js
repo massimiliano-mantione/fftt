@@ -1,6 +1,7 @@
 /* @flow */
 
 import {join, basename} from 'path'
+import * as mkdirpModule from 'mkdirp'
 import * as nameFilter from './nameFilter'
 import type {NameFilter} from './nameFilter'
 
@@ -17,6 +18,9 @@ export type FileFilter = {
   nameFilter: typeof nameFilter;
   treeFilter: (tree: TreeNode, filter: NameFilter) => ?TreeNode;
   scanDir: (fullPath: string, filter: NameFilter) => Promise<TreeNodeMap>;
+  mkdirp: (path: string) => Promise<void>;
+  slink: (srcpath: string, dstpath: string) => Promise<void>;
+  hlink: (srcpath: string, dstpath: string) => Promise<void>;
   copy: (source: string, target: string) => Promise<void>;
   readText: (sourcePath: string) => Promise<string>;
   writeText: (text: string, targetPath: string) => Promise<void>;
@@ -36,6 +40,42 @@ function ff (fs: any) : FileFilter {
     fs = require('fs')
   }
   let result = {}
+
+  function mkdirp (path: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      mkdirpModule.mkdirp(path, {fs: fs}, err => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve()
+        }
+      })
+    })
+  }
+
+  function hlink (srcpath: string, dstpath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      fs.link(srcpath, dstpath, err => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve()
+        }
+      })
+    })
+  }
+
+  function slink (srcpath: string, dstpath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      fs.symlink(srcpath, dstpath, err => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve()
+        }
+      })
+    })
+  }
 
   function copy (source: string, target: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -197,6 +237,9 @@ function ff (fs: any) : FileFilter {
   result.nameFilter = nameFilter
   result.treeFilter = treeFilter
   result.scanDir = scanDir
+  result.mkdirp = mkdirp
+  result.slink = slink
+  result.hlink = hlink
   result.copy = copy
   result.readText = readText
   result.writeText = writeText
