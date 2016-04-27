@@ -13,8 +13,8 @@ describe('Hash', () => {
     expect(result).to.equal('F-52d5b977e091d02281056e295b80f2d97e5ed092')
   })
   it('Hashes asynchronously', () => {
-    return hash.hashStream(sstr('Foo!'), 'T').then(h => {
-      expect(h).to.equal('T-52d5b977e091d02281056e295b80f2d97e5ed092')
+    return hash.hashStream(sstr('Foo!'), 'L').then(h => {
+      expect(h).to.equal('L-52d5b977e091d02281056e295b80f2d97e5ed092')
     })
   })
 

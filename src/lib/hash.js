@@ -9,10 +9,12 @@ export type HashKind = ('F'|'D'|'T')
 let kinds = {
   'f': 'F',
   'F': 'F',
+  'x': 'x',
+  'X': 'X',
   'd': 'D',
   'D': 'D',
-  't': 'T',
-  'T': 'T'
+  'l': 'L',
+  'L': 'L'
 }
 
 function checkKind (kind: string): boolean {

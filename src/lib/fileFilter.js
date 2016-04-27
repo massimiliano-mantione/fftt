@@ -9,12 +9,15 @@ export type TreeNodeMap = {[key: string]: TreeNode}
 export type TreeNode = {
   isDir: boolean;
   isExe: boolean;
+  isLink: boolean;
   children: TreeNodeMap;
   mtimeTicks: number;
   hash: ?string;
 }
 
 export type FileFilter = {
+  join: typeof join;
+  basename: typeof basename;
   nameFilter: typeof nameFilter;
   treeFilter: (tree: TreeNode, filter: NameFilter) => ?TreeNode;
   scanDir: (fullPath: string, filter: NameFilter) => Promise<TreeNodeMap>;
@@ -22,11 +25,12 @@ export type FileFilter = {
   slink: (srcpath: string, dstpath: string) => Promise<void>;
   hlink: (srcpath: string, dstpath: string) => Promise<void>;
   copy: (source: string, target: string) => Promise<void>;
+  createReadStream: (path: string) => any;
   readText: (sourcePath: string) => Promise<string>;
   writeText: (text: string, targetPath: string) => Promise<void>;
   stat: (path: string) => Promise<any>;
   statNode: (fullPath: string) => Promise<TreeNode>;
-  makeTreeNode: (isDir: boolean, isExe: boolean, children: TreeNodeMap, mtimeTicks: number, hash: ?string) => TreeNode;
+  makeTreeNode: (isDir: boolean, isExe: boolean, isLink: boolean, children: TreeNodeMap, mtimeTicks: number, hash: ?string) => TreeNode;
   cloneTreeNode: (node: TreeNode) => TreeNode;
   fromFs: (fs: any) => FileFilter;
 }
@@ -88,6 +92,10 @@ function ff (fs: any) : FileFilter {
     })
   }
 
+  function createReadStream (path: string): any {
+    return fs.createReadStream(path)
+  }
+
   function readText (sourcePath: string): Promise<string> {
     return new Promise((resolve, reject) => {
       fs.readFile(sourcePath, {encoding: 'utf8'}, (err, data) => {
@@ -115,10 +123,11 @@ function ff (fs: any) : FileFilter {
     })
   }
 
-  function makeTreeNode (isDir: boolean, isExe: boolean, children: TreeNodeMap = {}, mtimeTicks: number = 0, hash: ?string = null): TreeNode {
+  function makeTreeNode (isDir: boolean, isExe: boolean, isLink: boolean = false, children: TreeNodeMap = {}, mtimeTicks: number = 0, hash: ?string = null): TreeNode {
     return {
       isDir: isDir,
       isExe: isExe,
+      isLink: isLink,
       mtimeTicks: mtimeTicks,
       hash: hash,
       children: children
@@ -133,6 +142,7 @@ function ff (fs: any) : FileFilter {
     return {
       isDir: node.isDir,
       isExe: node.isExe,
+      isLink: node.isLink,
       children: children,
       mtimeTicks: node.mtimeTicks,
       hash: node.hash
@@ -151,7 +161,7 @@ function ff (fs: any) : FileFilter {
               children[fileName] = child
             })
           })).then(() => {
-            return Promise.resolve(makeTreeNode(true, false, children))
+            return Promise.resolve(makeTreeNode(true, false, false, children))
           })
           .then((stats) => resolve(stats))
           .catch((err) => { reject(err) })
@@ -168,7 +178,7 @@ function ff (fs: any) : FileFilter {
     return stat(fullPath)
     .then((stats) => {
       if (stats.isFile()) {
-        return Promise.resolve(makeTreeNode(false, isExecutable(stats), {}, stats.mtime.getTime()))
+        return Promise.resolve(makeTreeNode(false, isExecutable(stats), false, {}, stats.mtime.getTime()))
       } else if (stats.isDirectory()) {
         return statDir(fullPath)
       } else {
@@ -179,7 +189,7 @@ function ff (fs: any) : FileFilter {
 
   function treeFilter (tree: TreeNode, filter: NameFilter) : TreeNode {
     let children = {}
-    let result = makeTreeNode(tree.isDir, tree.isExe, children, tree.mtimeTicks, tree.hash)
+    let result = makeTreeNode(tree.isDir, tree.isExe, false, children, tree.mtimeTicks, tree.hash)
     childNames(tree).forEach((name) => {
       let treeChild = tree.children[name]
       let filterResult = filter(name, treeChild.isDir)
@@ -211,11 +221,11 @@ function ff (fs: any) : FileFilter {
                 if (stats.isDirectory()) {
                   return scanDir(nodePath, filterResult.next).then(dirChildren => {
                     if ((!fr.volatile) || Object.keys(dirChildren).length > 0) {
-                      children[nodeName] = makeTreeNode(true, false, dirChildren, stats.mtime.getTime())
+                      children[nodeName] = makeTreeNode(true, false, false, dirChildren, stats.mtime.getTime())
                     }
                   })
                 } else if (stats.isFile()) {
-                  children[nodeName] = makeTreeNode(false, isExecutable(stats), {}, stats.mtime.getTime())
+                  children[nodeName] = makeTreeNode(false, isExecutable(stats), false, {}, stats.mtime.getTime())
                   return Promise.resolve()
                 } else {
                   throw new Error('Path is neither a file nor a directory: ' + nodePath)
@@ -234,6 +244,8 @@ function ff (fs: any) : FileFilter {
     })
   }
 
+  result.join = join
+  result.basename = basename
   result.nameFilter = nameFilter
   result.treeFilter = treeFilter
   result.scanDir = scanDir
@@ -241,6 +253,7 @@ function ff (fs: any) : FileFilter {
   result.slink = slink
   result.hlink = hlink
   result.copy = copy
+  result.createReadStream = createReadStream
   result.readText = readText
   result.writeText = writeText
   result.stat = stat
