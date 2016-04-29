@@ -1,12 +1,12 @@
 /* @flow */
 
 import {expect} from 'code'
-import * as Lab from 'lab'
+import Lab from 'lab'
 const lab = exports.lab = Lab.script()
 const {it, describe} = require('./promisify-lab')(lab)
 
-import * as fsData from './fs-data'
-import * as fileFilter from '../lib/fileFilter'
+import fsData from './fs-data'
+import fileFilter from '../lib/fileFilter'
 
 function checkNodes (nodes, check) {
   Object.keys(nodes).forEach(name => {

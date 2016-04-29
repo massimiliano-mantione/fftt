@@ -1,8 +1,8 @@
 /* @flow */
 
 import {join, basename} from 'path'
-import * as mkdirpModule from 'mkdirp'
-import * as nameFilter from './nameFilter'
+import mkdirpModule from 'mkdirp'
+import nameFilter from './nameFilter'
 import type {NameFilter} from './nameFilter'
 
 export type TreeNodeMap = {[key: string]: TreeNode}

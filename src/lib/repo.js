@@ -1,6 +1,6 @@
 /* @flow */
 
-import * as hash from './hash'
+import hash from './hash'
 
 import type {FileFilter, TreeNode, TreeNodeMap} from './fileFilter'
 

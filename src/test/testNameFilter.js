@@ -1,11 +1,11 @@
 /* @flow */
 
 import {expect} from 'code'
-import * as Lab from 'lab'
+import Lab from 'lab'
 const lab = exports.lab = Lab.script()
 const {it, describe} = require('./promisify-lab')(lab)
 
-import * as nameFilter from '../lib/nameFilter'
+import nameFilter from '../lib/nameFilter'
 
 describe('nameFilter', () => {
   let empty = nameFilter.NULL

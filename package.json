@@ -10,7 +10,7 @@
     "test": "./node_modules/.bin/standard && ./node_modules/.bin/lab -S -T src/test/transform.js src/test -I __core-js_shared__"
   },
   "bin": {
-    "arts": ""
+    "fftt": "./lib/fftt.js"
   },
   "repository": {
     "type": "git",

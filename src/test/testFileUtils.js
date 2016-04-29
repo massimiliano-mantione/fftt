@@ -1,12 +1,12 @@
 /* @flow */
 
 import {expect} from 'code'
-import * as Lab from 'lab'
+import Lab from 'lab'
 const lab = exports.lab = Lab.script()
 const {it, describe, beforeEach} = require('./promisify-lab')(lab)
 
-import * as mock from 'mock-fs'
-import * as fileFilter from '../lib/fileFilter'
+import mock from 'mock-fs'
+import fileFilter from '../lib/fileFilter'
 
 let files = {
   '/root': {

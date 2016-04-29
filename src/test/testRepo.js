@@ -1,12 +1,12 @@
 /* @flow */
 
 import {expect} from 'code'
-import * as Lab from 'lab'
+import Lab from 'lab'
 const lab = exports.lab = Lab.script()
 const {it, describe, beforeEach} = require('./promisify-lab')(lab)
 
-import * as fsData from './fs-data'
-import * as fileFilter from '../lib/fileFilter'
+import fsData from './fs-data'
+import fileFilter from '../lib/fileFilter'
 import repository from '../lib/repo'
 
 describe('repo', () => {

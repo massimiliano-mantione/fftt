@@ -1,7 +1,7 @@
 /* @flow */
 
-import * as hash from './hash'
-import type {FileFilter, TreeNode, TreeNodeMap} from './fileFilter'
+import hash from './hash'
+// import type {FileFilter, TreeNode, TreeNodeMap} from './fileFilter'
 
 export type GlobString = string
 export type GlobArray = Array<GlobString|GlobArray>

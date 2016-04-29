@@ -1,6 +1,6 @@
 /* @flow */
 
-import * as crypto from 'crypto'
+import crypto from 'crypto'
 const ALGORITHM = 'sha1'
 const DIGEST_FORMAT = 'hex'
 

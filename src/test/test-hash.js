@@ -1,5 +1,5 @@
 import {expect} from 'code'
-import * as Lab from 'lab'
+import Lab from 'lab'
 const lab = exports.lab = Lab.script()
 const {it, describe, beforeEach} = require('./promisify-lab')(lab)
 
