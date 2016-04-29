@@ -251,6 +251,16 @@ function makeBuildGraph (data: any): BuildGraph {
     }
   }
 
+  for (let taskId of Object.keys(graph.tasks)) {
+    let task = graph.tasks[taskId]
+    for (let arg of task.in) {
+      let id = arg.id
+      if (id && !graph.tasks[id]) {
+        err('Input ' + id + ' not found in task ' + task.id)
+      }
+    }
+  }
+
   if (graph.defaultTask !== null && !graph.tasks[graph.defaultTask]) {
     err('Default task not found: ' + graph.defaultTask)
   }

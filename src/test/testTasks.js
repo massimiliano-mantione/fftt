@@ -119,4 +119,30 @@ describe('tasks makeBuildGraph', () => {
     expect(graph.tasks['foo'].id).to.equal('foo')
     expect(graph.tasks['bar'].id).to.equal('bar')
   })
+
+  it('checks graph edges', () => {
+    let data = [
+      {'default': 'foo'},
+      {env: 'bar'},
+      {
+        id: 'foo',
+        in: 'baz',
+        run: {img: 'image', cmd: 'ls'}
+      },
+      {
+        id: 'bar',
+        in: {source: '/source'},
+        run: {img: 'image', cmd: 'ps'}
+      }
+    ]
+    try {
+      makeBuildGraph(data)
+    } catch (e) {
+      expect(e.message).to.contain('baz')
+      expect(e.message).to.contain('not found in task')
+      expect(e.message).to.contain('foo')
+      return
+    }
+    fail()
+  })
 })
