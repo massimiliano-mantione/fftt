@@ -14,7 +14,9 @@ let kinds = {
   'd': 'D',
   'D': 'D',
   'l': 'L',
-  'L': 'L'
+  'L': 'L',
+  't': 'T',
+  'T': 'T'
 }
 
 function checkKind (kind: string): boolean {
