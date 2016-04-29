@@ -1,6 +1,6 @@
 /* @flow */
 
-import {join, basename} from 'path'
+import {join, basename, dirname} from 'path'
 import mkdirpModule from 'mkdirp'
 import nameFilter from './nameFilter'
 import type {NameFilter} from './nameFilter'
@@ -18,6 +18,7 @@ export type TreeNode = {
 export type FileFilter = {
   join: typeof join;
   basename: typeof basename;
+  dirname: typeof dirname;
   nameFilter: typeof nameFilter;
   treeFilter: (tree: TreeNode, filter: NameFilter) => ?TreeNode;
   scanDir: (fullPath: string, filter: NameFilter) => Promise<TreeNodeMap>;
@@ -246,6 +247,7 @@ function ff (fs: any) : FileFilter {
 
   result.join = join
   result.basename = basename
+  result.dirname = dirname
   result.nameFilter = nameFilter
   result.treeFilter = treeFilter
   result.scanDir = scanDir
