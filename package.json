@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/massimiliano-mantione/fftt#readme",
   "dependencies": {
+    "dockerode": "^2.2.10",
     "js-yaml": "^3.4.6",
     "mkdirp": "^0.5.1",
     "shortid": "^2.2.6",
