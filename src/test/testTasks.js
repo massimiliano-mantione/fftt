@@ -1,11 +1,15 @@
 /* @flow */
 
-import {expect, fail} from 'code'
+import {expect} from 'code'
 import Lab from 'lab'
 const lab = exports.lab = Lab.script()
 const {it, describe} = require('./promisify-lab')(lab)
 
 import {internal, makeBuildGraph} from '../lib/tasks'
+
+function fail () {
+  expect(false).to.equal(true)
+}
 
 describe('tasks makeGlob', () => {
   let m = internal.makeGlob

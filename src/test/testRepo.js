@@ -32,7 +32,7 @@ describe('repo', () => {
     return repository(ff, '/my/repo').then(r => {
       let pathToStore = '/data/dir1/dir1txt'
       return ff.scanDir(pathToStore, ff.nameFilter._.fromGlobString('**/*')).then(children => {
-        return r.storeDir(pathToStore, false, children)
+        return r.storeDir(pathToStore, false, children, false)
       }).then(dirHash => {
         return ff.readText(ff.join('/my/repo/obj', dirHash))
       }).then(text => {
@@ -53,7 +53,7 @@ describe('repo', () => {
       let pathToStore = '/data/dir1'
       let dirHash = ''
       return ff.scanDir(pathToStore, ff.nameFilter._.fromGlobString('**/*')).then(children => {
-        return r.storeDir(pathToStore, false, children)
+        return r.storeDir(pathToStore, false, children, false)
       }).then(dh => {
         dirHash = dh
         return ff.readText(ff.join('/my/repo/obj', dirHash))
@@ -76,6 +76,15 @@ describe('repo', () => {
       }).then(files => {
         expect(files).to.deep.equal([ 't11', 't12', '{j:true}', 'console.log(\'Hi!\')' ])
       })
+    })
+  })
+
+  it('makes workdirs', () => {
+    return repository(ff, '/my/repo').then(r => {
+      return r.makeWorkDir()
+    }).then(wd => {
+      expect(wd.base.indexOf('/my/repo/tmp')).to.equal(0)
+      expect(wd.in.indexOf(wd.base)).to.equal(0)
     })
   })
 })
