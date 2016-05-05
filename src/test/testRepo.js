@@ -48,6 +48,24 @@ describe('repo', () => {
     })
   })
 
+  it('checks out trees', () => {
+    return repository(ff, '/my/repo').then(r => {
+      let pathToStore = '/data/dir1/dir1txt'
+      return ff.scanDir(pathToStore, ff.nameFilter._.fromGlobString('**/*')).then(children => {
+        return r.storeDir(pathToStore, false, children, false)
+      }).then(dirHash => {
+        return r.checkOutResult(dirHash)
+      }).then(dirPath => {
+        return Promise.all([
+          ff.readText(ff.join(dirPath, 't111.txt')),
+          ff.readText(ff.join(dirPath, 't112.txt'))
+        ])
+      }).then(files => {
+        expect(files).to.deep.equal(['t11', 't12'])
+      })
+    })
+  })
+
   it('stores deep trees', () => {
     return repository(ff, '/my/repo').then(r => {
       let pathToStore = '/data/dir1'

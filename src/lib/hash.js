@@ -140,6 +140,11 @@ function hashObject (steps: any, data: any, kindVal: string): string {
   return hashString(stringData, kindVal)
 }
 
+function isDirectory (h: string): boolean {
+  let start = h.charAt(0)
+  return start === 'D' || start === 'L'
+}
+
 module.exports = {
   _: {
     hashObjectPartial
@@ -149,5 +154,6 @@ module.exports = {
   getKind,
   hashStream,
   hashString,
-  hashObject
+  hashObject,
+  isDirectory
 }

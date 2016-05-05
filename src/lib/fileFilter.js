@@ -33,6 +33,7 @@ export type FileFilter = {
   statNode: (fullPath: string) => Promise<TreeNode>;
   makeTreeNode: (isDir: boolean, isExe: boolean, isLink: boolean, children: TreeNodeMap, mtimeTicks: number, hash: ?string) => TreeNode;
   cloneTreeNode: (node: TreeNode) => TreeNode;
+  fs: any;
   fromFs: (fs: any) => FileFilter;
 }
 
@@ -262,6 +263,7 @@ function ff (fs: any) : FileFilter {
   result.statNode = statNode
   result.makeTreeNode = makeTreeNode
   result.cloneTreeNode = cloneTreeNode
+  result.fs = fs
   result.fromFs = ff
 
   return result

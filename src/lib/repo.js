@@ -7,6 +7,7 @@ import type {FileFilter, TreeNode, TreeNodeMap} from './fileFilter'
 
 export type Workdir = {
   base: string;
+  env: string;
   in: string;
   inHash: string;
   out: string;
@@ -19,13 +20,16 @@ export type Repo = {
   storeTree: (path: string, node: TreeNode, storeFilesAsLinks: boolean) => Promise<string>;
   storeFile: (path: string, isExe: boolean, storeFilesAsLinks: boolean) => Promise<string>;
   storeDir: (path: string, isLink: boolean, children: TreeNodeMap, storeFilesAsLinks: boolean) => Promise<string>;
+  checkOutResult: (hash: string) => Promise<string>;
   makeWorkDir: () => Promise<Workdir>;
+  ROOT: string;
   OBJ: string;
   MEM: string;
   DIR: string;
   FIX: string;
   TMP: string;
   MNT: string;
+  RES: string;
   OUT: string;
 }
 
@@ -36,6 +40,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
   let FIX = ff.join(root, 'fix')
   let TMP = ff.join(root, 'tmp')
   let MNT = ff.join(root, 'mnt')
+  let RES = ff.join(root, 'res')
   let OUT = ff.join(root, 'out')
 
   function storeTree (path: string, node: TreeNode, storeFilesAsLinks: boolean): Promise<string> {
@@ -110,21 +115,70 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     })
   }
 
+  function checkOutFile (path: string, h: string): Promise<void> {
+    return ff.hlink(ff.join(OBJ, h), path)
+  }
+
+  function checkOutDirectory (path: string, h: string): Promise<void> {
+    return ff.readText(ff.join(OBJ, h)).then(text => {
+      let dir = JSON.parse(text)
+      let todo = Object.keys(dir).map(name => {
+        let childHash = dir[name]
+        let childPath = ff.join(path, name)
+        if (hash.isDirectory(childHash)) {
+          return ff.mkdirp(childPath).then(() => {
+            return checkOutDirectory(childPath, childHash)
+          })
+        } else {
+          return checkOutFile(childPath, childHash)
+        }
+      })
+      return Promise.all(todo)
+    }).then(() => {
+      return
+    })
+  }
+
+  function checkOutResult (h: string): Promise<string> {
+    let path = ff.join(RES, h)
+    return ff.stat(path).then(stats => {
+      if (stats.isDirectory()) {
+        return Promise.resolve(path)
+      } else {
+        return Promise.reject()
+      }
+    }).catch(() => {
+      if (hash.isDirectory(h)) {
+        return ff.mkdirp(path).then(() => {
+          return checkOutDirectory(path, h)
+        })
+      } else {
+        return checkOutFile(path, h)
+      }
+    }).then(() => {
+      return path
+    })
+  }
+
   function makeWorkDir (): Promise<Workdir> {
     let baseName = shortid.generate()
     let base = ff.join(TMP, baseName)
+    let env = ff.join(base, 'env')
     let result = {
       base: base,
-      in: ff.join(base, 'in'),
+      env: env,
+      in: ff.join(env, 'in'),
       inHash: '',
-      out: ff.join(base, 'out'),
+      out: ff.join(env, 'out'),
       exit: ff.join(base, 'exit'),
       stdout: ff.join(base, 'stdout'),
       stderr: ff.join(base, 'stderr')
     }
     return ff.mkdirp(base).then(() => {
+      return ff.mkdirp(env)
+    }).then(() => {
       Promise.all([
-        ff.mkdirp(result.in),
+        ff.slink('/repo', result.in),
         ff.mkdirp(result.out),
         ff.writeText('', result.exit),
         ff.writeText('', result.stdout),
@@ -139,11 +193,13 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     storeTree,
     storeFile,
     storeDir,
+    checkOutResult,
     makeWorkDir,
-    OBJ, MEM, DIR, FIX, TMP, MNT, OUT
+    ROOT: root,
+    OBJ, MEM, DIR, FIX, TMP, MNT, RES, OUT
   }
 
-  return Promise.all([OBJ, MEM, DIR, FIX, TMP, MNT, OUT].map(p => { ff.mkdirp(p) })).then(() => {
+  return Promise.all([OBJ, MEM, DIR, FIX, TMP, MNT, RES, OUT].map(p => { ff.mkdirp(p) })).then(() => {
     return repo
   })
 }
