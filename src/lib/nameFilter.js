@@ -62,7 +62,14 @@ function stripContinueMarker (path: string): string {
 }
 
 function splitPath (path: string): string[] {
-  return path.split('/')
+  let result = path.split('/')
+  result = result.filter(p => {
+    if (p === '..') {
+      throw new Error('.. not allowed in paths: ' + path)
+    }
+    return p !== '' && p !== '.'
+  })
+  return result
 }
 
 var anyFilter: NameFilter = (name: string) => {

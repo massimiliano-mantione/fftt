@@ -64,8 +64,8 @@ describe('nameFilter', () => {
       expect(nameFilter._.splitPath('foobar')).to.deep.equal(['foobar'])
       expect(nameFilter._.splitPath('foo/bar')).to.deep.equal(['foo', 'bar'])
       expect(nameFilter._.splitPath('foo/bar/baz')).to.deep.equal(['foo', 'bar', 'baz'])
-      expect(nameFilter._.splitPath('/foobar')).to.deep.equal(['', 'foobar'])
-      expect(nameFilter._.splitPath('foobar/')).to.deep.equal(['foobar', ''])
+      expect(nameFilter._.splitPath('/foobar')).to.deep.equal(['foobar'])
+      expect(nameFilter._.splitPath('foobar/')).to.deep.equal(['foobar'])
     })
   })
 
