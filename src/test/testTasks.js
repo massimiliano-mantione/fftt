@@ -107,6 +107,7 @@ describe('tasks makeBuildGraph', () => {
     let data = [
       {'default': 'foo'},
       {env: 'bar'},
+      {dirs: {out: 'build'}},
       {
         id: 'foo',
         in: 'bar',
@@ -118,10 +119,12 @@ describe('tasks makeBuildGraph', () => {
         run: {img: 'image', cmd: 'ps'}
       }
     ]
-    let graph = makeBuildGraph(data)
+    let graph = makeBuildGraph(data, '/foo')
     expect(graph.defaultTask).to.equal('foo')
     expect(graph.tasks['foo'].id).to.equal('foo')
     expect(graph.tasks['bar'].id).to.equal('bar')
+    expect(graph.repoRoot).to.equal('/foo/repo')
+    expect(graph.buildRoot).to.equal('/foo/build')
   })
 
   it('checks graph edges', () => {
@@ -140,7 +143,7 @@ describe('tasks makeBuildGraph', () => {
       }
     ]
     try {
-      makeBuildGraph(data)
+      makeBuildGraph(data, '/foo')
     } catch (e) {
       expect(e.message).to.contain('baz')
       expect(e.message).to.contain('not found in task')

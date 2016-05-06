@@ -1,5 +1,6 @@
 /* @flow */
 
+import {join} from 'path'
 import hash from './hash'
 // import type {FileFilter, TreeNode, TreeNodeMap} from './fileFilter'
 
@@ -37,6 +38,9 @@ export type Task = {
 }
 
 export type BuildGraph = {
+  repoRoot: string;
+  sourceRoot: string;
+  buildRoot: string;
   defaultTask: ?string;
   tasks: {[key: string]: Task}
 }
@@ -220,9 +224,12 @@ function makeTask (data: any): Task {
   return task
 }
 
-function makeBuildGraph (data: any): BuildGraph {
+function makeBuildGraph (data: any, baseDir: string): BuildGraph {
   let hasDefault = false
   let graph = {
+    repoRoot: '',
+    sourceRoot: '',
+    buildRoot: '',
     defaultTask: null,
     tasks: {}
   }
@@ -246,9 +253,32 @@ function makeBuildGraph (data: any): BuildGraph {
         hasDefault = true
         graph.defaultTask = dataElement.default
       }
+    } else if (typeof dataElement.dirs === 'object') {
+      let dirs = dataElement.dirs
+      if (graph.repoRoot !== '' || graph.sourceRoot !== '' || graph.buildRoot !== '') {
+        err('Cannot specify dirs more than once: ' + objString(dirs))
+      }
+      if (typeof dirs.repo === 'string') {
+        graph.repoRoot = join(baseDir, dirs.repo)
+      }
+      if (typeof dirs.src === 'string') {
+        graph.sourceRoot = dirs.src
+      }
+      if (typeof dirs.out === 'string') {
+        graph.buildRoot = join(baseDir, dirs.out)
+      }
     } else {
       err('Invalid build file element: ' + objString(dataElement))
     }
+  }
+  if (graph.repoRoot === '') {
+    graph.repoRoot = join(baseDir, 'repo')
+  }
+  if (graph.sourceRoot === '') {
+    graph.sourceRoot = baseDir
+  }
+  if (graph.buildRoot === '') {
+    graph.buildRoot = join(baseDir, 'out')
   }
 
   for (let taskId of Object.keys(graph.tasks)) {
