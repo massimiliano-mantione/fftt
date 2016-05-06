@@ -73,34 +73,20 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     })
   }
 
-  function storeDir (path: string, isLink: boolean, children: TreeNodeMap, storeFilesAsLinks: boolean): Promise<string> {
-    let dirData = {}
-    let dirHash = ''
-    let dirDir = ''
-    let dirFix = ''
-    let childNames = Object.keys(children)
-    return Promise.all(childNames.map(childName => {
-      let childPath = ff.join(path, childName)
-      let childNode = children[childName]
-      return storeTree(childPath, childNode, storeFilesAsLinks)
-    })).then(() => {
-      for (let childName of childNames) {
-        dirData[childName] = children[childName].hash
-      }
-      dirHash = hash.hashObject('{}', dirData, isLink ? 'L' : 'D')
-      // TODO: refcount-protected writes
-      dirDir = ff.join(DIR, dirHash)
-      dirFix = ff.join(FIX, dirHash)
-      return Promise.all([
-        ff.mkdirp(dirDir),
-        ff.mkdirp(dirFix),
-        ff.writeText(JSON.stringify(dirData), ff.join(OBJ, dirHash))
-      ])
-    }).then(() => {
+  function hashAndWriteDir (dirData: Object, isLink: boolean): Promise<string> {
+    let childNames = Object.keys(dirData)
+    let dirHash = hash.hashObject('{}', dirData, isLink ? 'L' : 'D')
+    // TODO: refcount-protected writes
+    let dirDir = ff.join(DIR, dirHash)
+    let dirFix = ff.join(FIX, dirHash)
+    return Promise.all([
+      ff.mkdirp(dirDir),
+      ff.mkdirp(dirFix),
+      ff.writeText(JSON.stringify(dirData), ff.join(OBJ, dirHash))
+    ]).then(() => {
       let linkOperations = childNames.map(childName => {
-        let child = children[childName]
         let childHash = dirData[childName]
-        if (child.isDir) {
+        if (hash.isDirectory(childHash)) {
           return Promise.all([
             ff.hlink(ff.join(OBJ, childHash), ff.join(dirFix, childName)),
             ff.slink(ff.join(DIR, childHash), ff.join(dirDir, childName))
@@ -112,6 +98,21 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
       return Promise.all(linkOperations)
     }).then(() => {
       return dirHash
+    })
+  }
+
+  function storeDir (path: string, isLink: boolean, children: TreeNodeMap, storeFilesAsLinks: boolean): Promise<string> {
+    let dirData = {}
+    let childNames = Object.keys(children)
+    return Promise.all(childNames.map(childName => {
+      let childPath = ff.join(path, childName)
+      let childNode = children[childName]
+      return storeTree(childPath, childNode, storeFilesAsLinks)
+    })).then(() => {
+      for (let childName of childNames) {
+        dirData[childName] = children[childName].hash
+      }
+      return hashAndWriteDir(dirData, isLink)
     })
   }
 
