@@ -8,6 +8,7 @@ const {it, describe, beforeEach} = require('./promisify-lab')(lab)
 import fsData from './fs-data'
 import fileFilter from '../lib/fileFilter'
 import repository from '../lib/repo'
+import hash from '../lib/hash'
 
 describe('repo', () => {
   let fs = fsData.fs()
@@ -30,10 +31,12 @@ describe('repo', () => {
 
   it('stores trees', () => {
     return repository(ff, '/my/repo').then(r => {
+      let dirHash = hash.EMPTY
       let pathToStore = '/data/dir1/dir1txt'
       return ff.scanDir(pathToStore, ff.nameFilter._.fromGlobString('**/*')).then(children => {
         return r.storeDir(pathToStore, false, children, false)
-      }).then(dirHash => {
+      }).then(h => {
+        dirHash = h
         return ff.readText(ff.join('/my/repo/obj', dirHash))
       }).then(text => {
         let dirData = JSON.parse(text)
@@ -44,6 +47,15 @@ describe('repo', () => {
         ])
       }).then(files => {
         expect(files).to.deep.equal(['t11', 't12'])
+      }).then(() => {
+        return r.extractTree(dirHash)
+      }).then(tree => {
+        expect(tree.isDir).to.equal(true)
+        expect(tree.hash).to.equal(dirHash)
+        expect(tree.children['t111.txt'].isDir).to.equal(false)
+        expect(tree.children['t111.txt'].children).to.deep.equal({})
+        expect(tree.children['t112.txt'].isDir).to.equal(false)
+        expect(tree.children['t112.txt'].children).to.deep.equal({})
       })
     })
   })

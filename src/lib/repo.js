@@ -21,6 +21,7 @@ export type Repo = {
   storeFile: (path: string, isExe: boolean, storeFilesAsLinks: boolean) => Promise<string>;
   storeDir: (path: ?string, isLink: boolean, children: TreeNodeMap, storeFilesAsLinks: boolean) => Promise<string>;
   checkOutResult: (hash: string) => Promise<string>;
+  extractTree: (hash: string) => Promise<TreeNode>;
   makeWorkDir: () => Promise<Workdir>;
   ROOT: string;
   OBJ: string;
@@ -161,6 +162,27 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     })
   }
 
+  function extractTree (h: string): Promise<TreeNode> {
+    if (hash.isDirectory(h)) {
+      let children = {}
+      let result = ff.makeTreeNode(true, false, hash.isLink(h), children, 0, h)
+      return ff.readText(ff.join(OBJ, h)).then(text => {
+        return JSON.parse(text)
+      }).then(dirData => {
+        return Promise.all(Object.keys(dirData).map(name => {
+          let childHash = dirData[name]
+          return extractTree(childHash).then(childNode => {
+            children[name] = childNode
+          })
+        }))
+      }).then(() => {
+        return result
+      })
+    } else {
+      return Promise.resolve(ff.makeTreeNode(false, hash.isExecutable(h), false, {}, 0, h))
+    }
+  }
+
   function makeWorkDir (): Promise<Workdir> {
     let baseName = shortid.generate()
     let base = ff.join(TMP, baseName)
@@ -195,6 +217,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     storeFile,
     storeDir,
     checkOutResult,
+    extractTree,
     makeWorkDir,
     ROOT: root,
     OBJ, MEM, DIR, FIX, TMP, MNT, RES, OUT

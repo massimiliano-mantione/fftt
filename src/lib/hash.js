@@ -145,6 +145,14 @@ function isDirectory (h: string): boolean {
   let start = h.charAt(0)
   return start === 'D' || start === 'L'
 }
+function isExecutable (h: string): boolean {
+  let start = h.charAt(0)
+  return start === 'X'
+}
+function isLink (h: string): boolean {
+  let start = h.charAt(0)
+  return start === 'L'
+}
 
 module.exports = {
   _: {
@@ -157,5 +165,7 @@ module.exports = {
   hashString,
   hashObject,
   isDirectory,
+  isExecutable,
+  isLink,
   EMPTY: EMPTY
 }
