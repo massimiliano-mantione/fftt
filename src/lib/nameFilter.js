@@ -215,10 +215,10 @@ var nameFilter = {
     stripFinalSeparator,
     stripInitialSeparator,
     stripContinueMarker,
-    splitPath,
     fromSingleGlobString,
     fromGlobString
   },
+  splitPath,
   fromGlobArray,
   fromGlob,
   isAbsolute,

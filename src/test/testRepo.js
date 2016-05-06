@@ -29,7 +29,7 @@ describe('repo', () => {
     })
   })
 
-  it('stores trees', () => {
+  it('works with trees trees', () => {
     return repository(ff, '/my/repo').then(r => {
       let dirHash = hash.EMPTY
       let pathToStore = '/data/dir1/dir1txt'
@@ -56,6 +56,14 @@ describe('repo', () => {
         expect(tree.children['t111.txt'].children).to.deep.equal({})
         expect(tree.children['t112.txt'].isDir).to.equal(false)
         expect(tree.children['t112.txt'].children).to.deep.equal({})
+        return tree
+      }).then(tree => {
+        let longer = r.prependPath('/foo/bar/baz', tree)
+        expect(longer.children['foo'].children['bar'].children['baz'].children['t111.txt'].isDir).to.equal(false)
+        expect(longer.children['foo'].children['bar'].children['baz'].isDir).to.equal(true)
+        let shorter = r.walkPath('foo/bar/baz/', longer)
+        expect(shorter).to.equal(tree)
+        expect(r.walkPath('foo/no/where', longer)).to.equal(null)
       })
     })
   })

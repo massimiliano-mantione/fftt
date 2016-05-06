@@ -1,6 +1,7 @@
 /* @flow */
 
 import shortid from 'shortid'
+import nameFilter from './nameFilter'
 import hash from './hash'
 
 import type {FileFilter, TreeNode, TreeNodeMap} from './fileFilter'
@@ -22,6 +23,8 @@ export type Repo = {
   storeDir: (path: ?string, isLink: boolean, children: TreeNodeMap, storeFilesAsLinks: boolean) => Promise<string>;
   checkOutResult: (hash: string) => Promise<string>;
   extractTree: (hash: string) => Promise<TreeNode>;
+  prependPath: (path: string, tree: TreeNode) => TreeNode;
+  walkPath: (path: string, tree: TreeNode) => ?TreeNode;
   makeWorkDir: () => Promise<Workdir>;
   ROOT: string;
   OBJ: string;
@@ -183,6 +186,29 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     }
   }
 
+  function prependPath (path: string, tree: TreeNode): TreeNode {
+    let components = nameFilter.splitPath(path)
+    components.reverse()
+    for (let component of components) {
+      let children = {}
+      children[component] = tree
+      tree = ff.makeTreeNode(true, false, false, children, 0, hash.EMPTY)
+    }
+    return tree
+  }
+
+  function walkPath (path: string, tree: TreeNode): ?TreeNode {
+    let components = nameFilter.splitPath(path)
+    for (let component of components) {
+      if (tree.isDir && tree.children[component]) {
+        tree = tree.children[component]
+      } else {
+        return null
+      }
+    }
+    return tree
+  }
+
   function makeWorkDir (): Promise<Workdir> {
     let baseName = shortid.generate()
     let base = ff.join(TMP, baseName)
@@ -218,6 +244,8 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     storeDir,
     checkOutResult,
     extractTree,
+    prependPath,
+    walkPath,
     makeWorkDir,
     ROOT: root,
     OBJ, MEM, DIR, FIX, TMP, MNT, RES, OUT
