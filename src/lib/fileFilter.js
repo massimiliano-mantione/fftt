@@ -192,7 +192,7 @@ function ff (fs: any) : FileFilter {
 
   function treeFilter (tree: TreeNode, filter: NameFilter) : TreeNode {
     let children = {}
-    let result = makeTreeNode(tree.isDir, tree.isExe, false, children, tree.mtimeTicks, tree.hash)
+    let result = makeTreeNode(tree.isDir, tree.isExe, false, children, tree.mtimeTicks, tree.isDir ? hash.EMPTY : tree.hash)
     childNames(tree).forEach((name) => {
       let treeChild = tree.children[name]
       let filterResult = filter(name, treeChild.isDir)

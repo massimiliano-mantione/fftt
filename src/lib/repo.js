@@ -17,9 +17,9 @@ export type Workdir = {
 }
 
 export type Repo = {
-  storeTree: (path: string, node: TreeNode, storeFilesAsLinks: boolean) => Promise<string>;
+  storeTree: (path: ?string, node: TreeNode, storeFilesAsLinks: boolean) => Promise<string>;
   storeFile: (path: string, isExe: boolean, storeFilesAsLinks: boolean) => Promise<string>;
-  storeDir: (path: string, isLink: boolean, children: TreeNodeMap, storeFilesAsLinks: boolean) => Promise<string>;
+  storeDir: (path: ?string, isLink: boolean, children: TreeNodeMap, storeFilesAsLinks: boolean) => Promise<string>;
   checkOutResult: (hash: string) => Promise<string>;
   makeWorkDir: () => Promise<Workdir>;
   ROOT: string;
@@ -43,13 +43,13 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
   let RES = ff.join(root, 'res')
   let OUT = ff.join(root, 'out')
 
-  function storeTree (path: string, node: TreeNode, storeFilesAsLinks: boolean): Promise<string> {
+  function storeTree (path: ?string, node: TreeNode, storeFilesAsLinks: boolean): Promise<string> {
     if (node.hash !== hash.EMPTY) {
       return Promise.resolve(node.hash)
     } else {
       let hPromise = (node.isDir)
         ? storeDir(path, node.isLink, node.children, storeFilesAsLinks)
-        : storeFile(path, node.isExe, storeFilesAsLinks)
+        : (path ? storeFile(path, node.isExe, storeFilesAsLinks) : Promise.reject(new Error('File path is null')))
       return hPromise.then(h => {
         node.hash = h
         return h
@@ -58,7 +58,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
   }
 
   function storeFile (path: string, isExe: boolean, storeFilesAsLinks: boolean): Promise<string> {
-    let fileHash = ''
+    let fileHash = hash.EMPTY
     return hash.hashStream(ff.createReadStream(path), isExe ? 'X' : 'F').then(h => {
       fileHash = h
       let fileInRepo = ff.join(OBJ, fileHash)
@@ -101,11 +101,11 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     })
   }
 
-  function storeDir (path: string, isLink: boolean, children: TreeNodeMap, storeFilesAsLinks: boolean): Promise<string> {
+  function storeDir (path: ?string, isLink: boolean, children: TreeNodeMap, storeFilesAsLinks: boolean): Promise<string> {
     let dirData = {}
     let childNames = Object.keys(children)
     return Promise.all(childNames.map(childName => {
-      let childPath = ff.join(path, childName)
+      let childPath = path ? ff.join(path, childName) : null
       let childNode = children[childName]
       return storeTree(childPath, childNode, storeFilesAsLinks)
     })).then(() => {
