@@ -1,5 +1,7 @@
 /* @flow */
 
+import type {Glob, GlobArray} from './tasks'
+
 // This function is like a predicate on a file or directory name.
 // Given a name (and whether it is a directory), it returns null if it
 // does not match the filter, and a FilterResult if it matches.
@@ -19,7 +21,8 @@ type FilterResult = {
 const CONTINUE_MARKER = '/...'
 
 function endsWith (path: string, end: string): boolean {
-  return (path.indexOf(end) === path.length - end.length)
+  let foundIndex = path.indexOf(end)
+  return (foundIndex >= 0 && foundIndex === path.length - end.length)
 }
 
 function hasContinueMarker (path: string): boolean {
@@ -93,6 +96,18 @@ function doubleStarFilter (next: NameFilter = NULL) : NameFilter {
   return me
 }
 
+function unionFilter (alternatives: Array<NameFilter>) : NameFilter {
+  return (name: string, isDir: boolean) => {
+    for (let attempt of alternatives) {
+      let result = attempt(name, isDir)
+      if (result !== null) {
+        return result
+      }
+    }
+    return null
+  }
+}
+
 function fromSingleGlobString (pattern: string, next: NameFilter = NULL) : NameFilter {
   if (pattern === '') {
     return starFilter(next)
@@ -121,12 +136,67 @@ function fromSingleGlobString (pattern: string, next: NameFilter = NULL) : NameF
   }
 }
 
-function fromGlobString (pattern: string, next: NameFilter = NULL) : NameFilter {
+function fromGlobString (pattern: string, next: NameFilter = NULL): NameFilter {
   let components = pattern.split('/')
   while (components.length > 0) {
-    next = fromSingleGlobString(components.pop(), next)
+    let component = components.pop()
+    if (component.length > 0) {
+      next = fromSingleGlobString(component, next)
+    }
   }
   return next
+}
+
+function isGlobSequence (globs: GlobArray): boolean {
+  if (globs.length === 0) {
+    return false
+  }
+  let first = globs[0]
+  if (typeof first === 'string' && hasContinueMarker(first)) {
+    return true
+  }
+  return false
+}
+
+function toGlobSequence (globs: GlobArray): GlobArray {
+  let strip = true
+  return globs.map(g => {
+    if (strip && typeof g === 'string') {
+      strip = false
+      return stripContinueMarker(g)
+    } else {
+      return g
+    }
+  })
+}
+
+function fromGlobItem (item: GlobArray|string, next: NameFilter = NULL): NameFilter {
+  if (typeof item === 'string') {
+    return fromGlobString(item, next)
+  } else if (Array.isArray(item)) {
+    return fromGlobArray(item, next)
+  } else {
+    throw new Error('Invalid glob: ', item)
+  }
+}
+
+function fromGlobArray (globs: GlobArray, next: NameFilter = NULL): NameFilter {
+  if (isGlobSequence(globs)) {
+    let sequence = toGlobSequence(globs)
+    while (sequence.length > 0) {
+      next = fromGlobItem(sequence.pop(), next)
+    }
+    return next
+  } else {
+    let alternatives = globs.map(g => {
+      return fromGlobItem(g, next)
+    })
+    return unionFilter(alternatives)
+  }
+}
+
+function fromGlob (glob: Glob): NameFilter {
+  return fromGlobArray(glob.files)
 }
 
 var nameFilter = {
@@ -142,6 +212,8 @@ var nameFilter = {
     fromSingleGlobString,
     fromGlobString
   },
+  fromGlobArray,
+  fromGlob,
   isAbsolute,
   NULL
 }

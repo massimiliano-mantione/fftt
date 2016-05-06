@@ -4,8 +4,7 @@ import {join} from 'path'
 import hash from './hash'
 // import type {FileFilter, TreeNode, TreeNodeMap} from './fileFilter'
 
-export type GlobString = string
-export type GlobArray = Array<GlobString|GlobArray>
+export type GlobArray = Array<string|GlobArray>
 export type Glob = {
   from: string;
   files: GlobArray;

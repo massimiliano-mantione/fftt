@@ -192,4 +192,39 @@ describe('nameFilter', () => {
       }
     })
   })
+
+  describe('fromGlobArray', () => {
+    var fga = nameFilter.fromGlobArray
+
+    it('handles a simple pattern', () => {
+      var name = 'foobar'
+      var files = [name]
+      var glob = fga(files)
+      expect(glob(name, false)).to.deep.equal({name: name, next: empty, volatile: false})
+    })
+
+    it('handles a sequence', () => {
+      var glob = fga(['foo/...', 'bar'])
+      let foo = glob('foo', false)
+      if (foo) {
+        expect(foo.name).to.equal('foo')
+        if (foo.next) {
+          expect(foo.next('bar', false)).to.deep.equal({name: 'bar', next: empty, volatile: false})
+        } else {
+          throw new Error('foo.next is null')
+        }
+      } else {
+        throw new Error('foo is null')
+      }
+    })
+
+    it('handles an alternative', () => {
+      let n1 = 'foo'
+      let n2 = 'bar'
+      var glob = fga([n1, n2])
+      expect(glob(n1, false)).to.deep.equal({name: n1, next: empty, volatile: false})
+      expect(glob(n2, false)).to.deep.equal({name: n2, next: empty, volatile: false})
+      expect(glob('baz', false)).to.equal(null)
+    })
+  })
 })
