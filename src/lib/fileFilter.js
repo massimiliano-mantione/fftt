@@ -3,6 +3,7 @@
 import {join, basename, dirname} from 'path'
 import mkdirpModule from 'mkdirp'
 import nameFilter from './nameFilter'
+import hash from './hash'
 import type {NameFilter} from './nameFilter'
 
 export type TreeNodeMap = {[key: string]: TreeNode}
@@ -12,7 +13,7 @@ export type TreeNode = {
   isLink: boolean;
   children: TreeNodeMap;
   mtimeTicks: number;
-  hash: ?string;
+  hash: string;
 }
 
 export type FileFilter = {
@@ -31,7 +32,7 @@ export type FileFilter = {
   writeText: (text: string, targetPath: string) => Promise<void>;
   stat: (path: string) => Promise<any>;
   statNode: (fullPath: string) => Promise<TreeNode>;
-  makeTreeNode: (isDir: boolean, isExe: boolean, isLink: boolean, children: TreeNodeMap, mtimeTicks: number, hash: ?string) => TreeNode;
+  makeTreeNode: (isDir: boolean, isExe: boolean, isLink: boolean, children: TreeNodeMap, mtimeTicks: number, hash: string) => TreeNode;
   cloneTreeNode: (node: TreeNode) => TreeNode;
   fs: any;
   fromFs: (fs: any) => FileFilter;
@@ -125,13 +126,13 @@ function ff (fs: any) : FileFilter {
     })
   }
 
-  function makeTreeNode (isDir: boolean, isExe: boolean, isLink: boolean = false, children: TreeNodeMap = {}, mtimeTicks: number = 0, hash: ?string = null): TreeNode {
+  function makeTreeNode (isDir: boolean, isExe: boolean, isLink: boolean = false, children: TreeNodeMap = {}, mtimeTicks: number = 0, h: string = hash.EMPTY): TreeNode {
     return {
       isDir: isDir,
       isExe: isExe,
       isLink: isLink,
       mtimeTicks: mtimeTicks,
-      hash: hash,
+      hash: h,
       children: children
     }
   }

@@ -44,7 +44,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
   let OUT = ff.join(root, 'out')
 
   function storeTree (path: string, node: TreeNode, storeFilesAsLinks: boolean): Promise<string> {
-    if (node.hash != null) {
+    if (node.hash !== hash.EMPTY) {
       return Promise.resolve(node.hash)
     } else {
       let hPromise = (node.isDir)
