@@ -40,12 +40,12 @@ try {
   graphFile = ff.join(cwd, graphFile)
   let baseDir = ff.dirname(graphFile)
   let repoRoot = ff.join(baseDir, 'repo')
-  let repo = repository(ff, repoRoot)
   ff.readText(graphFile).then(graphText => {
     return yaml.safeLoad(graphText)
   }).then(graphData => {
     return makeBuildGraph(graphData, repoRoot)
   }).then(graph => {
+    let repo = repository(ff, graph.repoRoot)
     console.log('PARSED', graph)
   }).catch(e => {
     console.log(e.message)

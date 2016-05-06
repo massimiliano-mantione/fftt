@@ -3,6 +3,7 @@
 import crypto from 'crypto'
 const ALGORITHM = 'sha1'
 const DIGEST_FORMAT = 'hex'
+const EMPTY = ''
 
 export type HashKind = ('F'|'D'|'T')
 
@@ -155,5 +156,6 @@ module.exports = {
   hashStream,
   hashString,
   hashObject,
-  isDirectory
+  isDirectory,
+  EMPTY: EMPTY
 }

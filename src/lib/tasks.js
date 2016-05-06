@@ -211,7 +211,7 @@ function makeTask (data: any): Task {
     in: makeTaskInput(data.in, taskId),
     out: makeGlob(data.out, taskId),
     run: makeTaskCommand(data.run, taskId),
-    hash: ''
+    hash: hash.EMPTY
   }
   let toHash = {
     id: task.id,
