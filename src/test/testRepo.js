@@ -14,6 +14,16 @@ describe('repo', () => {
   let fs = fsData.fs()
   let ff = fileFilter.fromFs(fs)
 
+  function simplifyTree (tree) {
+    let result = {}
+    if (tree.isDir) {
+      for (let name of ff.childNames(tree)) {
+        result[name] = simplifyTree(tree.children[name])
+      }
+    }
+    return result
+  }
+
   beforeEach(() => {
     fs = fsData.fs()
     ff = fileFilter.fromFs(fs)
@@ -33,8 +43,8 @@ describe('repo', () => {
     return repository(ff, '/my/repo').then(r => {
       let dirHash = hash.EMPTY
       let pathToStore = '/data/dir1/dir1txt'
-      return ff.scanDir(pathToStore, ff.nameFilter._.fromGlobString('**/*')).then(children => {
-        return r.storeDir(pathToStore, false, children, false)
+      return ff.scanDir(pathToStore, ff.nameFilter._.fromGlobString('**/*')).then(tree => {
+        return r.storeDir(pathToStore, false, tree.children, false)
       }).then(h => {
         dirHash = h
         return ff.readText(ff.join('/my/repo/obj', dirHash))
@@ -75,8 +85,8 @@ describe('repo', () => {
   it('checks out trees', () => {
     return repository(ff, '/my/repo').then(r => {
       let pathToStore = '/data/dir1/dir1txt'
-      return ff.scanDir(pathToStore, ff.nameFilter._.fromGlobString('**/*')).then(children => {
-        return r.storeDir(pathToStore, false, children, false)
+      return ff.scanDir(pathToStore, ff.nameFilter._.fromGlobString('**/*')).then(tree => {
+        return r.storeDir(pathToStore, false, tree.children, false)
       }).then(dirHash => {
         return r.checkOutResult(dirHash)
       }).then(dirPath => {
@@ -94,8 +104,8 @@ describe('repo', () => {
     return repository(ff, '/my/repo').then(r => {
       let pathToStore = '/data/dir1'
       let dirHash = ''
-      return ff.scanDir(pathToStore, ff.nameFilter._.fromGlobString('**/*')).then(children => {
-        return r.storeDir(pathToStore, false, children, false)
+      return ff.scanDir(pathToStore, ff.nameFilter._.fromGlobString('**/*')).then(tree => {
+        return r.storeDir(pathToStore, false, tree.children, false)
       }).then(dh => {
         dirHash = dh
         return ff.readText(ff.join('/my/repo/obj', dirHash))
@@ -117,6 +127,36 @@ describe('repo', () => {
         ])
       }).then(files => {
         expect(files).to.deep.equal([ 't11', 't12', '{j:true}', 'console.log(\'Hi!\')' ])
+      })
+    })
+  })
+
+  it('merges two trees', () => {
+    return repository(ff, '/my/repo').then(r => {
+      let txt = ff.nameFilter.fromGlobArray(['**/*.txt'])
+      let dir1tree = ff.makeEmptyDirNode()
+      let dir2tree = ff.makeEmptyDirNode()
+      let merged = ff.makeEmptyDirNode()
+      return ff.scanDir('/data/dir1', txt).then(tree => {
+        dir1tree = tree
+        return r.storeTree('/data/dir1', dir2tree, false)
+      }).then(() => {
+        return ff.scanDir('/data/dir2', txt)
+      }).then(tree => {
+        dir2tree = tree
+        return r.storeTree('/data/dir2', dir2tree, false)
+      }).then(() => {
+        return r.storeTree(null, merged, false)
+      }).then(() => {
+        merged = r.mergeTrees2(dir1tree, dir2tree, 'merged')
+        expect(simplifyTree(merged)).to.deep.equal({
+          't11.txt': {},
+          't12.txt': {},
+          dir1txt: { 't111.txt': {}, 't112.txt': {} },
+          't21.txt': {},
+          't22.txt': {},
+          dir2txt: { 't221.txt': {}, 't222.txt': {} }
+        })
       })
     })
   })

@@ -58,42 +58,42 @@ describe('treeFilter', () => {
     it('finds txt files', () => {
       let glob = ff.nameFilter._.fromGlobString('**/*.txt')
       return scanDir('/', glob).then(filtered => {
-        return checkNodesForSuffix(filtered, '.txt', [ 'data', 'dir1', 'dir1txt', 'dir2', 'dir2txt' ])
+        return checkNodesForSuffix(filtered.children, '.txt', [ 'data', 'dir1', 'dir1txt', 'dir2', 'dir2txt' ])
       })
     })
 
     it('finds txt files in a path', () => {
       let glob = ff.nameFilter._.fromGlobString('**/*.txt')
       return scanDir('/data', glob).then(filtered => {
-        return checkNodesForSuffix(filtered, '.txt', [ 'dir1', 'dir1txt', 'dir2', 'dir2txt' ])
+        return checkNodesForSuffix(filtered.children, '.txt', [ 'dir1', 'dir1txt', 'dir2', 'dir2txt' ])
       })
     })
 
     it('skips unknown files', () => {
       let glob = ff.nameFilter._.fromGlobString('**/*.tvv')
       return scanDir('/', glob).then(filtered => {
-        expect(filtered).to.deep.equal({})
+        expect(filtered.children).to.deep.equal({})
       })
     })
 
     it('skips unknown dirs', () => {
       let glob = ff.nameFilter._.fromGlobString('/woo')
       return scanDir('/', glob).then(filtered => {
-        expect(filtered).to.deep.equal({})
+        expect(filtered.children).to.deep.equal({})
       })
     })
 
     it('finds patterns', () => {
       let glob = ff.nameFilter._.fromGlobString('**/*.js??')
       return scanDir('/', glob).then(filtered => {
-        return checkNodesForSuffix(filtered, '.json', [ 'data', 'dir1', 'dir1json', 'dir2', 'dir2json' ])
+        return checkNodesForSuffix(filtered.children, '.json', [ 'data', 'dir1', 'dir1json', 'dir2', 'dir2json' ])
       })
     })
 
     it('looks into dirs', () => {
       let glob = ff.nameFilter._.fromGlobString('**/*.txt')
       return scanDir('/data/dir1', glob).then(filtered => {
-        return checkNodesForSuffix(filtered, '.txt', [ 'dir1txt' ])
+        return checkNodesForSuffix(filtered.children, '.txt', [ 'dir1txt' ])
       })
     })
   })

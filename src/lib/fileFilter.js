@@ -22,7 +22,7 @@ export type FileFilter = {
   dirname: typeof dirname;
   nameFilter: typeof nameFilter;
   treeFilter: (tree: TreeNode, filter: NameFilter) => ?TreeNode;
-  scanDir: (fullPath: string, filter: NameFilter) => Promise<TreeNodeMap>;
+  scanDir: (fullPath: string, filter: NameFilter) => Promise<TreeNode>;
   mkdirp: (path: string) => Promise<void>;
   slink: (srcpath: string, dstpath: string) => Promise<void>;
   hlink: (srcpath: string, dstpath: string) => Promise<void>;
@@ -34,6 +34,8 @@ export type FileFilter = {
   statNode: (fullPath: string) => Promise<TreeNode>;
   makeTreeNode: (isDir: boolean, isExe: boolean, isLink: boolean, children: TreeNodeMap, mtimeTicks: number, hash: string) => TreeNode;
   cloneTreeNode: (node: TreeNode) => TreeNode;
+  childNames: (node: TreeNode) => Array<string>;
+  makeEmptyDirNode: () => TreeNode;
   fs: any;
   fromFs: (fs: any) => FileFilter;
 }
@@ -137,6 +139,10 @@ function ff (fs: any) : FileFilter {
     }
   }
 
+  function makeEmptyDirNode (): TreeNode {
+    return makeTreeNode(true, false, false, {}, 0, hash.EMPTY)
+  }
+
   function cloneTreeNode (node: TreeNode): TreeNode {
     let children = {}
     childNames(node).forEach(k => {
@@ -208,7 +214,7 @@ function ff (fs: any) : FileFilter {
     return result
   }
 
-  function scanDir (path: string, filter: NameFilter): Promise<TreeNodeMap> {
+  function scanDir (path: string, filter: NameFilter): Promise<TreeNode> {
     return new Promise((resolve, reject) => {
       fs.readdir(path, (err, files) => {
         if (err) {
@@ -222,9 +228,10 @@ function ff (fs: any) : FileFilter {
               if (filterResult) {
                 let fr = filterResult
                 if (stats.isDirectory()) {
-                  return scanDir(nodePath, filterResult.next).then(dirChildren => {
-                    if ((!fr.volatile) || Object.keys(dirChildren).length > 0) {
-                      children[nodeName] = makeTreeNode(true, false, false, dirChildren, stats.mtime.getTime())
+                  return scanDir(nodePath, filterResult.next).then(childNode => {
+                    if ((!fr.volatile) || Object.keys(childNode.children).length > 0) {
+                      childNode.mtimeTicks = stats.mtime.getTime()
+                      children[nodeName] = childNode
                     }
                   })
                 } else if (stats.isFile()) {
@@ -238,7 +245,7 @@ function ff (fs: any) : FileFilter {
               }
             })
           })).then(() => {
-            resolve(children)
+            resolve(makeTreeNode(true, false, false, children))
           }).catch(err => {
             reject(err)
           })
@@ -264,6 +271,8 @@ function ff (fs: any) : FileFilter {
   result.statNode = statNode
   result.makeTreeNode = makeTreeNode
   result.cloneTreeNode = cloneTreeNode
+  result.childNames = childNames
+  result.makeEmptyDirNode = makeEmptyDirNode
   result.fs = fs
   result.fromFs = ff
 

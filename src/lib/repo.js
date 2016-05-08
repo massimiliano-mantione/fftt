@@ -25,6 +25,8 @@ export type Repo = {
   extractTree: (hash: string) => Promise<TreeNode>;
   prependPath: (path: string, tree: TreeNode) => TreeNode;
   walkPath: (path: string, tree: TreeNode) => ?TreeNode;
+  mergeTrees2: (tree1: TreeNode, tree2: TreeNode, treeName: string) => TreeNode;
+  mergeTrees: (trees: Array<TreeNode>) => TreeNode;
   makeWorkDir: () => Promise<Workdir>;
   ROOT: string;
   OBJ: string;
@@ -209,6 +211,30 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     return tree
   }
 
+  function mergeTrees2 (tree1: TreeNode, tree2: TreeNode, treeName: string): TreeNode {
+    if (tree1.isDir && tree2.isDir) {
+      let result = ff.cloneTreeNode(tree1)
+      result.hash = hash.EMPTY
+      for (let childName of ff.childNames(tree2)) {
+        let otherTree = tree2.children[childName]
+        if (result.children[childName]) {
+          result.children[childName] = mergeTrees2(result.children[childName], otherTree, childName)
+        } else {
+          result.children[childName] = ff.cloneTreeNode(otherTree)
+        }
+      }
+      return result
+    } else if (tree1.isDir || tree2.isDir) {
+      throw new Error('Cannot merge a file and a directory (item name "' + treeName + '")')
+    } else {
+      return ff.cloneTreeNode(tree2)
+    }
+  }
+
+  function mergeTrees (trees: Array<TreeNode>): TreeNode {
+    return ff.makeEmptyDirNode()
+  }
+
   function makeWorkDir (): Promise<Workdir> {
     let baseName = shortid.generate()
     let base = ff.join(TMP, baseName)
@@ -246,6 +272,8 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     extractTree,
     prependPath,
     walkPath,
+    mergeTrees2,
+    mergeTrees,
     makeWorkDir,
     ROOT: root,
     OBJ, MEM, DIR, FIX, TMP, MNT, RES, OUT
