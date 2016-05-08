@@ -27,7 +27,7 @@ export type Repo = {
   walkPath: (path: string, tree: TreeNode) => ?TreeNode;
   mergeTrees2: (tree1: TreeNode, tree2: TreeNode, treeName: string) => TreeNode;
   mergeTrees: (trees: Array<TreeNode>) => TreeNode;
-  makeWorkDir: () => Promise<Workdir>;
+  makeWorkDir: (inHash: string) => Promise<Workdir>;
   ROOT: string;
   OBJ: string;
   MEM: string;
@@ -248,7 +248,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     }
   }
 
-  function makeWorkDir (): Promise<Workdir> {
+  function makeWorkDir (inHash: string): Promise<Workdir> {
     let baseName = shortid.generate()
     let base = ff.join(TMP, baseName)
     let env = ff.join(base, 'env')
@@ -256,7 +256,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
       base: base,
       env: env,
       in: ff.join(env, 'in'),
-      inHash: '',
+      inHash: inHash,
       out: ff.join(env, 'out'),
       exit: ff.join(base, 'exit'),
       stdout: ff.join(base, 'stdout'),
@@ -266,7 +266,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
       return ff.mkdirp(env)
     }).then(() => {
       Promise.all([
-        ff.slink('/repo', result.in),
+        ff.slink(ff.join('/repo/mnt', inHash), result.in),
         ff.mkdirp(result.out),
         ff.writeText('', result.exit),
         ff.writeText('', result.stdout),

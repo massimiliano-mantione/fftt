@@ -187,7 +187,7 @@ describe('repo', () => {
 
   it('makes workdirs', () => {
     return repository(ff, '/my/repo').then(r => {
-      return r.makeWorkDir()
+      return r.makeWorkDir('foo-hash')
     }).then(wd => {
       expect(wd.base.indexOf('/my/repo/tmp')).to.equal(0)
       expect(wd.in.indexOf(wd.base)).to.equal(0)
