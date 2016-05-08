@@ -88,7 +88,7 @@ describe('repo', () => {
       return ff.scanDir(pathToStore, ff.nameFilter._.fromGlobString('**/*')).then(tree => {
         return r.storeDir(pathToStore, false, tree.children, false)
       }).then(dirHash => {
-        return r.checkOutResult(dirHash)
+        return r.checkOutTree(dirHash)
       }).then(dirPath => {
         return Promise.all([
           ff.readText(ff.join(dirPath, 't111.txt')),

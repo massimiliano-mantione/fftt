@@ -21,7 +21,7 @@ export type Repo = {
   storeTree: (path: ?string, node: TreeNode, storeFilesAsLinks: boolean) => Promise<string>;
   storeFile: (path: string, isExe: boolean, storeFilesAsLinks: boolean) => Promise<string>;
   storeDir: (path: ?string, isLink: boolean, children: TreeNodeMap, storeFilesAsLinks: boolean) => Promise<string>;
-  checkOutResult: (hash: string) => Promise<string>;
+  checkOutTree: (hash: string) => Promise<string>;
   extractTree: (hash: string) => Promise<TreeNode>;
   prependPath: (path: string, tree: TreeNode) => TreeNode;
   walkPath: (path: string, tree: TreeNode) => ?TreeNode;
@@ -35,7 +35,6 @@ export type Repo = {
   FIX: string;
   TMP: string;
   MNT: string;
-  RES: string;
   OUT: string;
 }
 
@@ -46,7 +45,6 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
   let FIX = ff.join(root, 'fix')
   let TMP = ff.join(root, 'tmp')
   let MNT = ff.join(root, 'mnt')
-  let RES = ff.join(root, 'res')
   let OUT = ff.join(root, 'out')
 
   function storeTree (path: ?string, node: TreeNode, storeFilesAsLinks: boolean): Promise<string> {
@@ -146,8 +144,8 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     })
   }
 
-  function checkOutResult (h: string): Promise<string> {
-    let path = ff.join(RES, h)
+  function checkOutTree (h: string): Promise<string> {
+    let path = ff.join(MNT, h)
     return ff.stat(path).then(stats => {
       if (stats.isDirectory()) {
         return Promise.resolve(path)
@@ -283,7 +281,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     storeTree,
     storeFile,
     storeDir,
-    checkOutResult,
+    checkOutTree,
     extractTree,
     prependPath,
     walkPath,
@@ -291,10 +289,10 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     mergeTrees,
     makeWorkDir,
     ROOT: root,
-    OBJ, MEM, DIR, FIX, TMP, MNT, RES, OUT
+    OBJ, MEM, DIR, FIX, TMP, MNT, OUT
   }
 
-  return Promise.all([OBJ, MEM, DIR, FIX, TMP, MNT, RES, OUT].map(p => { ff.mkdirp(p) })).then(() => {
+  return Promise.all([OBJ, MEM, DIR, FIX, TMP, MNT, OUT].map(p => { ff.mkdirp(p) })).then(() => {
     return repo
   })
 }
