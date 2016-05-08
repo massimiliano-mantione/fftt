@@ -232,7 +232,22 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
   }
 
   function mergeTrees (trees: Array<TreeNode>): TreeNode {
-    return ff.makeEmptyDirNode()
+    if (trees.length === 0) {
+      return ff.makeEmptyDirNode()
+    } else if (trees.length === 1) {
+      return ff.cloneTreeNode(trees[0])
+    } else {
+      let isFirst = true
+      let result = trees[0]
+      for (let tree of trees) {
+        if (isFirst) {
+          isFirst = false
+        } else {
+          result = mergeTrees2(result, tree, 'root')
+        }
+      }
+      return result
+    }
   }
 
   function makeWorkDir (): Promise<Workdir> {

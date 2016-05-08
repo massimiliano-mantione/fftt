@@ -161,6 +161,30 @@ describe('repo', () => {
     })
   })
 
+  it('merges trees', () => {
+    return repository(ff, '/my/repo').then(r => {
+      let txt = ff.nameFilter.fromGlobArray(['**/*.txt'])
+      let js = ff.nameFilter.fromGlobArray(['**/*.js'])
+      return Promise.all([
+        ff.scanDir('/data/dir1', txt),
+        ff.scanDir('/data/dir1', js),
+        ff.scanDir('/data/dir2', txt)
+      ]).then(trees => {
+        let merged = r.mergeTrees(trees)
+        expect(simplifyTree(merged)).to.deep.equal({
+          't11.txt': {},
+          't12.txt': {},
+          dir1txt: { 't111.txt': {}, 't112.txt': {} },
+          'j11.js': {},
+          dir1js: { 'j11i.js': {} },
+          't21.txt': {},
+          't22.txt': {},
+          dir2txt: { 't221.txt': {}, 't222.txt': {} }
+        })
+      })
+    })
+  })
+
   it('makes workdirs', () => {
     return repository(ff, '/my/repo').then(r => {
       return r.makeWorkDir()
