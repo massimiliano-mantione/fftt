@@ -185,6 +185,30 @@ describe('repo', () => {
     })
   })
 
+  it('evaluates source args', () => {
+    return repository(ff, '/my/repo').then(r => {
+      let arg = {
+        source: '/dir1',
+        files: {
+          from: '/dir1txt',
+          to: '/output',
+          files: ['*.txt']
+        },
+        id: null
+      }
+      return r.evaluateSourceArgument('/data', arg).then(h => {
+        return r.extractTree(h)
+      }).then(tree => {
+        expect(simplifyTree(tree)).to.deep.equal({
+          output: {
+            't111.txt': {},
+            't112.txt': {}
+          }
+        })
+      })
+    })
+  })
+
   it('makes workdirs', () => {
     return repository(ff, '/my/repo').then(r => {
       return r.makeWorkDir('foo-hash')

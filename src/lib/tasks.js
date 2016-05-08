@@ -14,7 +14,7 @@ export type Glob = {
 export type TaskArgument = {
   id: ?string;
   source: ?string;
-  files: ?Glob;
+  files: Glob;
 }
 export type TaskInput = Array<TaskArgument>
 

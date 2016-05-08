@@ -5,6 +5,7 @@ import nameFilter from './nameFilter'
 import hash from './hash'
 
 import type {FileFilter, TreeNode, TreeNodeMap} from './fileFilter'
+import type {TaskArgument} from './tasks'
 
 export type Workdir = {
   base: string;
@@ -28,6 +29,7 @@ export type Repo = {
   mergeTrees2: (tree1: TreeNode, tree2: TreeNode, treeName: string) => TreeNode;
   mergeTrees: (trees: Array<TreeNode>) => TreeNode;
   makeWorkDir: (inHash: string) => Promise<Workdir>;
+  evaluateSourceArgument: (sourceBase: string, arg: TaskArgument) => Promise<string>;
   ROOT: string;
   OBJ: string;
   MEM: string;
@@ -277,6 +279,30 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     })
   }
 
+  function evaluateSourceArgument (sourceBase: string, arg: TaskArgument): Promise<string> {
+    if (!arg.source) {
+      throw new Error('Source required')
+    }
+    let sourcePath = ff.join(sourceBase, arg.source)
+    let glob = arg.files
+    sourcePath = ff.join(sourcePath, glob.from)
+    let sourceTree = ff.makeEmptyDirNode()
+    return ff.scanDir(sourcePath, ff.nameFilter.fromGlobArray(glob.files)).then(tree => {
+      if (!tree) {
+        tree = ff.makeEmptyDirNode()
+      }
+      sourceTree = tree
+      return storeTree(sourcePath, sourceTree, false)
+    }).then(h => {
+      let resultTree = prependPath(glob.to, sourceTree)
+      if (resultTree !== sourceTree) {
+        return storeTree(null, resultTree, false)
+      } else {
+        return Promise.resolve(h)
+      }
+    })
+  }
+
   let repo = {
     storeTree,
     storeFile,
@@ -288,6 +314,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     mergeTrees2,
     mergeTrees,
     makeWorkDir,
+    evaluateSourceArgument,
     ROOT: root,
     OBJ, MEM, DIR, FIX, TMP, MNT, OUT
   }
