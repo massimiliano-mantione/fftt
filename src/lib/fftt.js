@@ -36,9 +36,9 @@ function processArg (arg: string): void {
 
 function fatal (e) {
   console.log(e)
-  if (e.stack) {
-    console.log(e.stack)
-  }
+  // if (e.stack) {
+  //   console.log(e.stack)
+  // }
   process.exit(1)
 }
 
@@ -67,6 +67,9 @@ try {
     }
     return repository(ff, graph.repoRoot).then(repo => {
       let tag = new Date().toISOString()
+
+      console.log('Starting build ' + tag)
+
       return repo.evaluateTask(task, graph, tag)
     })
   }).catch(e => {

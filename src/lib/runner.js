@@ -41,9 +41,9 @@ function run (ff: FileFilter, r: Repo, wd: Workdir, cmd: TaskCommand): Promise<v
       // We remove the container immediately because we are only interested
       // in its output, whch is already stored in the volume.
       // We don't wait for the removal because it would just slow the build.
-      container.remove(err => {
-        console.error('WARNING: cannot remove container:', err)
-      })
+      // container.remove(err => {
+      //   console.error('WARNING: cannot remove container:', err)
+      // })
       let exitCode = '' + data.StatusCode
       ff.writeText(exitCode, wd.exit).then(() => {
         if (err) {

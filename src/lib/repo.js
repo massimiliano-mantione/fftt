@@ -305,8 +305,6 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
   }
 
   function evaluateSourceArgument (sourceBase: string, arg: TaskArgument): Promise<string> {
-    console.log('evaluateSourceArgument', sourceBase, arg)
-
     if (!arg.source) {
       throw new Error('Source required')
     }
@@ -464,7 +462,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
       throw new Error('Recursive evaluation of task ' + task.id)
     }
 
-    console.log('evaluateTask', task, tag)
+    console.log('Computing', task.id)
 
     let memOut = ''
     task.lock = true
@@ -484,18 +482,14 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
         let evalHash = task.hash + '-' + inHash
         let memDir = ff.join(MEM, evalHash)
         memOut = ff.join(memDir, 'out')
-
-        console.log('memOut', memOut)
-
         return ff.exists(memOut)
       } else {
         return Promise.resolve(false)
       }
     }).then(hasResult => {
-
-      console.log('hasResult', hasResult)
-
       if (hasResult) {
+        console.log('Task ' + task.id + ' skipped (result cached)')
+
         return ff.readText(memOut).then(h => {
           outHash = h
           return ff.mkdirp(tagPath)
