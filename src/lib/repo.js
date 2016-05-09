@@ -291,6 +291,8 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
   }
 
   function evaluateSourceArgument (sourceBase: string, arg: TaskArgument): Promise<string> {
+    console.log('evaluateSourceArgument', sourceBase, arg)
+
     if (!arg.source) {
       throw new Error('Source required')
     }

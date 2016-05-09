@@ -278,11 +278,18 @@ function makeBuildGraph (data: any, baseDir: string): BuildGraph {
       err('Invalid build file element: ' + objString(dataElement))
     }
   }
+
+  console.log('baseDir', baseDir)
+
   if (graph.repoRoot === '') {
     graph.repoRoot = join(baseDir, 'repo')
+
+    console.log('graph.repoRoot', graph.repoRoot)
   }
   if (graph.sourceRoot === '') {
     graph.sourceRoot = baseDir
+
+    console.log('graph.sourceRoot', graph.sourceRoot)
   }
   if (graph.buildRoot === '') {
     graph.buildRoot = join(baseDir, 'out')

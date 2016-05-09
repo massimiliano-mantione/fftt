@@ -16,6 +16,8 @@ function err (message: string): void {
 }
 
 function processArg (arg: string): void {
+  console.log('ARG', arg)
+
   if (arg.charAt(0) === '.' || arg.charAt(0) === '/') {
     if (graphFileChanged) {
       err('Build file specified twice: ' + arg)
@@ -32,6 +34,14 @@ function processArg (arg: string): void {
   }
 }
 
+function fatal (e) {
+  console.log(e)
+  if (e.stack) {
+    console.log(e.stack)
+  }
+  process.exit(1)
+}
+
 try {
   for (let argIndex = 2; argIndex < process.argv.length; argIndex++) {
     processArg(process.argv[argIndex])
@@ -39,19 +49,29 @@ try {
 
   graphFile = ff.join(cwd, graphFile)
   let baseDir = ff.dirname(graphFile)
-  let repoRoot = ff.join(baseDir, 'repo')
   ff.readText(graphFile).then(graphText => {
     return yaml.safeLoad(graphText)
   }).then(graphData => {
-    return makeBuildGraph(graphData, repoRoot)
+    return makeBuildGraph(graphData, baseDir)
   }).then(graph => {
-    let repo = repository(ff, graph.repoRoot)
-    console.log('PARSED', graph)
+    if (!targetTask) {
+      if (graph.defaultTask) {
+        targetTask = graph.defaultTask
+      } else {
+        return Promise.reject('Target task not specified')
+      }
+    }
+    let task = graph.tasks[targetTask]
+    if (!task) {
+      return Promise.reject('Cannot find task ' + targetTask)
+    }
+    return repository(ff, graph.repoRoot).then(repo => {
+      let tag = new Date().toISOString()
+      return repo.evaluateTask(task, graph, tag)
+    })
   }).catch(e => {
-    console.log(e.message)
-    process.exit(1)
+    fatal(e)
   })
 } catch (e) {
-  console.log(e.message)
-  process.exit(1)
+  fatal(e)
 }
