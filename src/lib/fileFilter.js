@@ -26,6 +26,7 @@ export type FileFilter = {
   mkdirp: (path: string) => Promise<void>;
   slink: (srcpath: string, dstpath: string) => Promise<void>;
   hlink: (srcpath: string, dstpath: string) => Promise<void>;
+  unlink: (path: string) => Promise<void>;
   copy: (source: string, target: string) => Promise<void>;
   createReadStream: (path: string) => any;
   readText: (sourcePath: string) => Promise<string>;
@@ -78,6 +79,18 @@ function ff (fs: any) : FileFilter {
   function slink (srcpath: string, dstpath: string): Promise<void> {
     return new Promise((resolve, reject) => {
       fs.symlink(srcpath, dstpath, err => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve()
+        }
+      })
+    })
+  }
+
+  function unlink (path: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      fs.unlink(path, err => {
         if (err) {
           reject(err)
         } else {
@@ -272,6 +285,7 @@ function ff (fs: any) : FileFilter {
   result.mkdirp = mkdirp
   result.slink = slink
   result.hlink = hlink
+  result.unlink = unlink
   result.copy = copy
   result.createReadStream = createReadStream
   result.readText = readText

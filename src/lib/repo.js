@@ -92,6 +92,13 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
           return ff.copy(path, fileInRepo)
         }
       }
+    }).catch(err => {
+      if (err.code === 'EEXIST') {
+        // Ignore EEXIST: the file is already there
+        return Promise.resolve()
+      } else {
+        return Promise.reject(err)
+      }
     }).then(() => {
       return fileHash
     })
@@ -108,6 +115,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
       if (exists) {
         return Promise.resolve(dirHash)
       } else {
+        // FIXME: handle eventual EEXIST properly
         return Promise.all([
           ff.mkdirp(dirDir),
           ff.mkdirp(dirFix),

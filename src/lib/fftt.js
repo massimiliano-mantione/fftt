@@ -16,8 +16,6 @@ function err (message: string): void {
 }
 
 function processArg (arg: string): void {
-  console.log('ARG', arg)
-
   if (arg.charAt(0) === '.' || arg.charAt(0) === '/') {
     if (graphFileChanged) {
       err('Build file specified twice: ' + arg)
@@ -67,10 +65,23 @@ try {
     }
     return repository(ff, graph.repoRoot).then(repo => {
       let tag = new Date().toISOString()
+      let outLink = ff.join(graph.buildRoot, 'latest')
 
       console.log('Starting build ' + tag)
 
-      return repo.evaluateTask(task, graph, tag)
+      return repo.evaluateTask(task, graph, tag).then(() => {
+        return ff.mkdirp(graph.buildRoot)
+      }).then(() => {
+        return ff.unlink(outLink).catch(err => {
+          if (err.code === 'ENOENT') {
+            return Promise.resolve()
+          } else {
+            return Promise.reject(err)
+          }
+        })
+      }).then(() => {
+        return ff.slink(ff.join(graph.repoRoot, 'out', tag), outLink)
+      })
     })
   }).catch(e => {
     fatal(e)

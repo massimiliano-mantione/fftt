@@ -24,6 +24,7 @@ function run (ff: FileFilter, r: Repo, wd: Workdir, cmd: TaskCommand): Promise<v
 
     let options = {
       Tty: false,
+      User: '',
       WorkingDir: cmd.cwd,
       Volumes: {
         '/repo': {},
@@ -35,6 +36,9 @@ function run (ff: FileFilter, r: Repo, wd: Workdir, cmd: TaskCommand): Promise<v
           wd.env + ':/env'
         ]
       }
+    }
+    if (process.getuid) {
+      options.User = '' + process.getuid()
     }
 
     docker.run(cmd.img, cmd.cmd, streams, options, function (err, data, container) {
