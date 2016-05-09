@@ -170,7 +170,7 @@ function makeTaskCommand (data: any, taskId: string): ?TaskCommand {
     cmd: cmd,
     in: data.in || '/in',
     out: data.out || '/out',
-    cwd: data.cwd || '/',
+    cwd: data.cwd || '/env',
     mem: data.mem !== false,
     ovr: data.ovr === true
   }

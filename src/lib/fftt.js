@@ -64,8 +64,17 @@ try {
       return Promise.reject('Cannot find task ' + targetTask)
     }
     return repository(ff, graph.repoRoot).then(repo => {
-      let tag = new Date().toISOString()
-      let outLink = ff.join(graph.buildRoot, 'latest')
+      let date = new Date()
+      let tag = [
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDay(),
+        date.getUTCHours(),
+        date.getUTCMinutes(),
+        date.getUTCSeconds(),
+        date.getUTCMilliseconds()
+      ].join('-')
+      let outLink = ff.join(graph.buildRoot, task.id)
 
       console.log('Starting build ' + tag)
 
@@ -80,7 +89,7 @@ try {
           }
         })
       }).then(() => {
-        return ff.slink(ff.join(graph.repoRoot, 'out', tag), outLink)
+        return ff.slink(ff.join(graph.repoRoot, 'out', tag, task.id), outLink)
       })
     })
   }).catch(e => {
