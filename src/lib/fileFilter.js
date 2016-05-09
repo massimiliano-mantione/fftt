@@ -31,6 +31,7 @@ export type FileFilter = {
   readText: (sourcePath: string) => Promise<string>;
   writeText: (text: string, targetPath: string) => Promise<void>;
   stat: (path: string) => Promise<any>;
+  exists: (path: string) => Promise<boolean>;
   statNode: (fullPath: string) => Promise<TreeNode>;
   makeTreeNode: (isDir: boolean, isExe: boolean, isLink: boolean, children: TreeNodeMap, mtimeTicks: number, hash: string) => TreeNode;
   cloneTreeNode: (node: TreeNode) => TreeNode;
@@ -125,6 +126,14 @@ function ff (fs: any) : FileFilter {
         if (err) reject(err)
         else resolve(stats)
       })
+    })
+  }
+
+  function exists (path: string): Promise<boolean> {
+    return stat(path).then(() => {
+      return Promise.resolve(true)
+    }).catch(() => {
+      return Promise.resolve(false)
     })
   }
 
@@ -268,6 +277,7 @@ function ff (fs: any) : FileFilter {
   result.readText = readText
   result.writeText = writeText
   result.stat = stat
+  result.exists = exists
   result.statNode = statNode
   result.makeTreeNode = makeTreeNode
   result.cloneTreeNode = cloneTreeNode

@@ -76,14 +76,21 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
 
   function storeFile (path: string, isExe: boolean, storeFilesAsLinks: boolean): Promise<string> {
     let fileHash = hash.EMPTY
+    let fileInRepo = ''
     return hash.hashStream(ff.createReadStream(path), isExe ? 'X' : 'F').then(h => {
       fileHash = h
-      let fileInRepo = ff.join(OBJ, fileHash)
-      // TODO: refcount-protected writes
-      if (storeFilesAsLinks) {
-        return ff.hlink(path, fileInRepo)
+      fileInRepo = ff.join(OBJ, fileHash)
+      return ff.exists(fileInRepo)
+    }).then(exists => {
+      if (exists) {
+        return Promise.resolve()
       } else {
-        return ff.copy(path, fileInRepo)
+        // TODO: refcount-protected writes
+        if (storeFilesAsLinks) {
+          return ff.hlink(path, fileInRepo)
+        } else {
+          return ff.copy(path, fileInRepo)
+        }
       }
     }).then(() => {
       return fileHash
@@ -93,28 +100,35 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
   function hashAndWriteDir (dirData: Object, isLink: boolean): Promise<string> {
     let childNames = Object.keys(dirData)
     let dirHash = hash.hashObject('{}', dirData, isLink ? 'L' : 'D')
+    let dirObj = ff.join(OBJ, dirHash)
     // TODO: refcount-protected writes
     let dirDir = ff.join(DIR, dirHash)
     let dirFix = ff.join(FIX, dirHash)
-    return Promise.all([
-      ff.mkdirp(dirDir),
-      ff.mkdirp(dirFix),
-      ff.writeText(JSON.stringify(dirData), ff.join(OBJ, dirHash))
-    ]).then(() => {
-      let linkOperations = childNames.map(childName => {
-        let childHash = dirData[childName]
-        if (hash.isDirectory(childHash)) {
-          return Promise.all([
-            ff.hlink(ff.join(OBJ, childHash), ff.join(dirFix, childName)),
-            ff.slink(ff.join(DIR, childHash), ff.join(dirDir, childName))
-          ])
-        } else {
-          return ff.hlink(ff.join(OBJ, childHash), ff.join(dirDir, childName))
-        }
-      })
-      return Promise.all(linkOperations)
-    }).then(() => {
-      return dirHash
+    return ff.exists(dirObj).then(exists => {
+      if (exists) {
+        return Promise.resolve(dirHash)
+      } else {
+        return Promise.all([
+          ff.mkdirp(dirDir),
+          ff.mkdirp(dirFix),
+          ff.writeText(JSON.stringify(dirData), dirObj)
+        ]).then(() => {
+          let linkOperations = childNames.map(childName => {
+            let childHash = dirData[childName]
+            if (hash.isDirectory(childHash)) {
+              return Promise.all([
+                ff.hlink(ff.join(OBJ, childHash), ff.join(dirFix, childName)),
+                ff.slink(ff.join(DIR, childHash), ff.join(dirDir, childName))
+              ])
+            } else {
+              return ff.hlink(ff.join(OBJ, childHash), ff.join(dirDir, childName))
+            }
+          })
+          return Promise.all(linkOperations)
+        }).then(() => {
+          return dirHash
+        })
+      }
     })
   }
 
@@ -430,14 +444,35 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     })
   }
 
+  function runTask (inHash: string, task: Task, graph: BuildGraph, tag: string): Promise<string> {
+    if (task.run) {
+      let taskCommand = task.run
+      return makeWorkDir(inHash).then(workDir => {
+        return run(ff, repo, workDir, taskCommand).then(() => {
+          return storeResult(workDir, task, tag, true)
+        })
+      }).then(commandResult => {
+        return commandResult.out
+      })
+    } else {
+      return Promise.resolve(inHash)
+    }
+  }
+
   function evaluateTask (task: Task, graph: BuildGraph, tag: string): Promise<string> {
     if (task.lock) {
       throw new Error('Recursive evaluation of task ' + task.id)
     }
+
+    console.log('evaluateTask', task, tag)
+
+    let memOut = ''
     task.lock = true
     let taskInput = (task.in ? task.in : [])
     let argTrees = taskInput.map(arg => expandTaskArgument(arg, graph, tag))
     let inHash = hash.EMPTY
+    let outHash = hash.EMPTY
+    let tagPath = ff.join(OUT, tag)
     return Promise.all(argTrees).then(trees => {
       let inTree = mergeTrees(trees)
       return storeTree(null, inTree, false)
@@ -445,17 +480,32 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
       inHash = h
       return checkOutTree(inHash)
     }).then(() => {
-      if (task.run) {
-        let taskCommand = task.run
-        return makeWorkDir(inHash).then(workDir => {
-          return run(ff, repo, workDir, taskCommand).then(() => {
-            return storeResult(workDir, task, tag, true)
-          })
-        }).then(commandResult => {
-          return commandResult.out
+      if (task.hash !== hash.EMPTY) {
+        let evalHash = task.hash + '-' + inHash
+        let memDir = ff.join(MEM, evalHash)
+        memOut = ff.join(memDir, 'out')
+
+        console.log('memOut', memOut)
+
+        return ff.exists(memOut)
+      } else {
+        return Promise.resolve(false)
+      }
+    }).then(hasResult => {
+
+      console.log('hasResult', hasResult)
+
+      if (hasResult) {
+        return ff.readText(memOut).then(h => {
+          outHash = h
+          return ff.mkdirp(tagPath)
+        }).then(() => {
+          return ff.slink(ff.join(MNT, outHash), ff.join(tagPath, task.id))
+        }).then(() => {
+          return Promise.resolve(outHash)
         })
       } else {
-        return Promise.resolve(inHash)
+        return runTask(inHash, task, graph, tag)
       }
     })
   }

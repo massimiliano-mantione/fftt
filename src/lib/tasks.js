@@ -203,7 +203,8 @@ function flattenGlobArray (globArray: GlobArray): string {
   return parts.join('/')
 }
 let runHashSteps = ['img', ['cmd', '[]'], 'in', 'out', 'cwd', 'mem', 'ovr']
-let taskHashSteps = ['id', 'outFrom', 'outFiles', 'outTo', ['run', runHashSteps]]
+let taskHashStepsWithRun = ['id', 'outFrom', 'outFiles', 'outTo', ['run', runHashSteps]]
+let taskHashStepsWithoutRun = ['id', 'outFrom', 'outFiles', 'outTo']
 
 function makeTask (data: any): Task {
   let taskId = data.id
@@ -218,15 +219,25 @@ function makeTask (data: any): Task {
     hash: hash.EMPTY,
     lock: false
   }
-  if (task.run && task.run.mem) {
+  if (task.run) {
+    if (task.run.mem) {
+      let toHash = {
+        id: task.id,
+        outFrom: task.out.from,
+        outTo: task.out.to,
+        outFiles: flattenGlobArray(task.out.files),
+        run: task.run
+      }
+      task.hash = hash.hashObject(taskHashStepsWithRun, toHash, 'T')
+    }
+  } else {
     let toHash = {
       id: task.id,
       outFrom: task.out.from,
       outTo: task.out.to,
-      outFiles: flattenGlobArray(task.out.files),
-      run: task.run
+      outFiles: flattenGlobArray(task.out.files)
     }
-    task.hash = hash.hashObject(taskHashSteps, toHash, 'T')
+    task.hash = hash.hashObject(taskHashStepsWithoutRun, toHash, 'T')
   }
   return task
 }
