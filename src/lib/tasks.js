@@ -32,8 +32,9 @@ export type Task = {
   id: string;
   in: TaskInput;
   out: Glob;
-  run: TaskCommand;
+  run: ?TaskCommand;
   hash: string;
+  lock: boolean;
 }
 
 export type BuildGraph = {
@@ -143,7 +144,11 @@ function makeGlob (data: any, taskId: string): Glob {
   }
 }
 
-function makeTaskCommand (data: any, taskId: string): TaskCommand {
+function makeTaskCommand (data: any, taskId: string): ?TaskCommand {
+  if (!data) {
+    return null
+  }
+
   let cmd = data.cmd
   if (typeof cmd === 'string') {
     cmd = [cmd]
@@ -210,16 +215,19 @@ function makeTask (data: any): Task {
     in: makeTaskInput(data.in, taskId),
     out: makeGlob(data.out, taskId),
     run: makeTaskCommand(data.run, taskId),
-    hash: hash.EMPTY
+    hash: hash.EMPTY,
+    lock: false
   }
-  let toHash = {
-    id: task.id,
-    outFrom: task.out.from,
-    outTo: task.out.to,
-    outFiles: flattenGlobArray(task.out.files),
-    run: task.run
+  if (task.run && task.run.mem) {
+    let toHash = {
+      id: task.id,
+      outFrom: task.out.from,
+      outTo: task.out.to,
+      outFiles: flattenGlobArray(task.out.files),
+      run: task.run
+    }
+    task.hash = hash.hashObject(taskHashSteps, toHash, 'T')
   }
-  task.hash = hash.hashObject(taskHashSteps, toHash, 'T')
   return task
 }
 

@@ -3,9 +3,10 @@
 import shortid from 'shortid'
 import nameFilter from './nameFilter'
 import hash from './hash'
+import run from './runner'
 
 import type {FileFilter, TreeNode, TreeNodeMap} from './fileFilter'
-import type {TaskArgument} from './tasks'
+import type {TaskArgument, Task, BuildGraph} from './tasks'
 
 export type Workdir = {
   base: string;
@@ -16,6 +17,11 @@ export type Workdir = {
   exit: string;
   stdout: string;
   stderr: string;
+}
+
+export type CommandResult = {
+  out: string;
+  all: string;
 }
 
 export type Repo = {
@@ -30,6 +36,11 @@ export type Repo = {
   mergeTrees: (trees: Array<TreeNode>) => TreeNode;
   makeWorkDir: (inHash: string) => Promise<Workdir>;
   evaluateSourceArgument: (sourceBase: string, arg: TaskArgument) => Promise<string>;
+  evaluateCommandArgument: (arg: TaskArgument, graph: BuildGraph, tag: string) => Promise<string>;
+  evaluateTaskArgument: (arg: TaskArgument, graph: BuildGraph, tag: string) => Promise<string>;
+  expandTaskArgument: (arg: TaskArgument, graph: BuildGraph, tag: string) => Promise<TreeNode>;
+  storeResult: (workDir: Workdir, task: Task, tag: string, link: boolean) => Promise<CommandResult>;
+  evaluateTask: (task: Task, graph: BuildGraph, tag: string) => Promise<string>;
   ROOT: string;
   OBJ: string;
   MEM: string;
@@ -303,6 +314,150 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     })
   }
 
+  function evaluateCommandArgument (arg: TaskArgument, graph: BuildGraph, tag: string): Promise<string> {
+    if (!arg.id) {
+      throw new Error('Id required')
+    }
+    let id: string = arg.id
+    let task = graph.tasks[arg.id]
+    if (!task) {
+      throw new Error('Task ' + arg.id + ' not found')
+    }
+    let taskTree = ff.makeEmptyDirNode()
+    return evaluateTask(task, graph, tag).catch(err => {
+      console.error('Error evaluating task ' + id + ': ' + err)
+      return Promise.reject(err)
+    }).then(h => {
+      return extractTree(h)
+    }).then(tree => {
+      let glob = arg.files
+      let fromTree = walkPath(glob.from, tree)
+      if (!fromTree) {
+        taskTree = ff.makeEmptyDirNode()
+      } else {
+        taskTree = fromTree
+      }
+      taskTree = ff.treeFilter(taskTree, ff.nameFilter.fromGlobArray(glob.files))
+      if (!taskTree) {
+        taskTree = ff.makeEmptyDirNode()
+      }
+      taskTree = prependPath(glob.to, taskTree)
+      return storeTree(null, taskTree, true)
+    })
+  }
+
+  function evaluateTaskArgument (arg: TaskArgument, graph: BuildGraph, tag: string): Promise<string> {
+    if (arg.source) {
+      return evaluateSourceArgument(graph.sourceRoot, arg)
+    } else if (arg.id) {
+      return evaluateCommandArgument(arg, graph, tag)
+    } else {
+      throw new Error('Invalid arg: ', arg)
+    }
+  }
+
+  function expandTaskArgument (arg: TaskArgument, graph: BuildGraph, tag: string): Promise<TreeNode> {
+    return evaluateTaskArgument(arg, graph, tag).then(h => {
+      return extractTree(h)
+    }).then(tree => {
+      if (!tree) {
+        return ff.makeEmptyDirNode()
+      } else {
+        return tree
+      }
+    })
+  }
+
+  function storeResult (workDir: Workdir, task: Task, tag: string, link: boolean): Promise<CommandResult> {
+    let outPath = ff.join(workDir.out, task.out.from)
+    let tagPath = ff.join(OUT, tag)
+    let outTree = ff.makeEmptyDirNode()
+    let outHash = hash.EMPTY
+    let allHash = hash.EMPTY
+    return ff.scanDir(outPath, ff.nameFilter.fromGlobArray(task.out.files)).then(tree => {
+      if (!tree) {
+        tree = ff.makeEmptyDirNode()
+      }
+      outTree = tree
+      return storeTree(outPath, outTree, link)
+    }).then(h => {
+      let toTree = prependPath(task.out.to, outTree)
+      if (toTree === outTree) {
+        return Promise.resolve(h)
+      } else {
+        return storeTree(null, outTree, link)
+      }
+    }).then(h => {
+      outHash = h
+      return Promise.all([
+        storeFile(workDir.exit, false, true),
+        storeFile(workDir.stdout, false, true),
+        storeFile(workDir.stderr, false, true)
+      ])
+    }).then(hashes => {
+      let dirData = {
+        out: outHash,
+        exit: hashes[0],
+        stdout: hashes[1],
+        stderr: hashes[2]
+      }
+      return hashAndWriteDir(dirData, false)
+    }).then(h => {
+      allHash = h
+      if (task.hash !== hash.EMPTY) {
+        let resultHash = task.hash + '-' + workDir.inHash
+        let memDir = ff.join(MEM, resultHash)
+        return ff.mkdirp(memDir).then(() => {
+          return Promise.all([
+            ff.writeText(outHash, ff.join(memDir, 'out')),
+            ff.writeText(allHash, ff.join(memDir, 'all')),
+            ff.hlink(ff.join(OBJ, allHash), ff.join(memDir, 'lnk'))
+          ])
+        })
+      } else {
+        return Promise.resolve()
+      }
+    }).then(() => {
+      return checkOutTree(outHash)
+    }).then(() => {
+      return ff.mkdirp(tagPath)
+    }).then(() => {
+      return ff.slink(ff.join(MNT, outHash), ff.join(tagPath, task.id))
+    }).then(() => {
+      return Promise.resolve({out: outHash, all: allHash})
+    })
+  }
+
+  function evaluateTask (task: Task, graph: BuildGraph, tag: string): Promise<string> {
+    if (task.lock) {
+      throw new Error('Recursive evaluation of task ' + task.id)
+    }
+    task.lock = true
+    let taskInput = (task.in ? task.in : [])
+    let argTrees = taskInput.map(arg => expandTaskArgument(arg, graph, tag))
+    let inHash = hash.EMPTY
+    return Promise.all(argTrees).then(trees => {
+      let inTree = mergeTrees(trees)
+      return storeTree(null, inTree, false)
+    }).then(h => {
+      inHash = h
+      return checkOutTree(inHash)
+    }).then(() => {
+      if (task.run) {
+        let taskCommand = task.run
+        return makeWorkDir(inHash).then(workDir => {
+          return run(ff, repo, workDir, taskCommand).then(() => {
+            return storeResult(workDir, task, tag, true)
+          })
+        }).then(commandResult => {
+          return commandResult.out
+        })
+      } else {
+        return Promise.resolve(inHash)
+      }
+    })
+  }
+
   let repo = {
     storeTree,
     storeFile,
@@ -315,6 +470,11 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
     mergeTrees,
     makeWorkDir,
     evaluateSourceArgument,
+    evaluateCommandArgument,
+    evaluateTaskArgument,
+    expandTaskArgument,
+    storeResult,
+    evaluateTask,
     ROOT: root,
     OBJ, MEM, DIR, FIX, TMP, MNT, OUT
   }
