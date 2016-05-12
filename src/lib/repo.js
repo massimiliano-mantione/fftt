@@ -458,6 +458,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
           return storeResult(workDir, task, tag, true)
         })
       }).then(commandResult => {
+        console.log('Done', task.id)
         return commandResult.out
       })
     } else {
@@ -470,7 +471,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
       throw new Error('Recursive evaluation of task ' + task.id)
     }
 
-    console.log('Computing', task.id)
+    console.log('Eval', task.id)
 
     let memOut = ''
     task.lock = true
@@ -496,7 +497,7 @@ function repository (ff: FileFilter, root: string): Promise<Repo> {
       }
     }).then(hasResult => {
       if (hasResult) {
-        console.log('Task ' + task.id + ' skipped (result cached)')
+        console.log('Skip', task.id, '(result cached)')
 
         return ff.readText(memOut).then(h => {
           outHash = h
