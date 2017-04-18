@@ -1,3 +1,7 @@
+_This branch is discontinued_
+
+_Work continues on the master branch win a db-backed repo with fuse-based access_
+
 # FFTT: Functional File Tree Transforms
 
 A new concept of build tool.
