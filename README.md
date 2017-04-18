@@ -1,3 +1,13 @@
+_Warning: reimplementation in progress_
+
+_I am doing three main changes in this project:_
+
+* _Store the repo in a DB_
+* _Access the repo using fuse_
+* _Switch from Flowtype to Typescript_
+
+_The general concepts stay the same but I'll rewrite the README when the time comes_
+
 # FFTT: Functional File Tree Transforms
 
 A new concept of build tool.
