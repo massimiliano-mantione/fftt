@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "preserveConstEnums": true,
+    "noImplicitAny": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "strictNullChecks": true,
+    "inlineSourceMap": true,
+    "outDir": "./build/",
+    "pretty": true,
+    "lib": [
+      "es2015"
+    ],
+    "target": "ES5"
+  },
+  "include": [
+    "src/**/*.ts"
+  ]
+}

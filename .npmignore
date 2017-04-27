@@ -1,0 +1,10 @@
+.vscode
+node_modules
+src
+typings
+build/examples
+build/tests
+build/test
+tsconfig.json
+tslint.json
+typings.json

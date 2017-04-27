@@ -1,7 +1,11 @@
 /node_modules
-/lib
-/test
+/build
 *.log
 TMP*.*
 LOG*.*
 fftt.yaml
+/repo
+/fftt
+/source
+/test
+/previous
